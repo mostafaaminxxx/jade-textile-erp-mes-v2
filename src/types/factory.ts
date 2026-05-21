@@ -37,11 +37,17 @@ export interface ActiveLineContext {
   id: string;
   lineId: string | null;
   orderId: string | null;
+  customerId: string | null;
   orderCode: string | null;
+  poNumber: string | null;
   customerName: string | null;
   styleCode: string | null;
   colorName: string | null;
   shipmentDate: string | null;
+  smv: number | null;
+  plannedOperators: number | null;
+  plannedTargetPerDay: number | null;
+  contextStartAt: string | null;
   isActive: boolean | null;
 }
 

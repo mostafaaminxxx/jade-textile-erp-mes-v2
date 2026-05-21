@@ -22,7 +22,7 @@ export default async function OrdersPlanningPage() {
           <div className="space-y-6">
             {data.lineOrderContexts === 0 ? (
               <section className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm font-semibold text-orange-900">
-                Line assignment is not active yet because line_order_contexts is empty.
+                Line Assignment Center is enabled for authenticated Planning/Admin users. line_order_contexts is still empty until a real user assigns a real order to a real line.
               </section>
             ) : null}
 

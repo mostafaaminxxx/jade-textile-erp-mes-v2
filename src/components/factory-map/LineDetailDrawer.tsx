@@ -56,6 +56,10 @@ export function LineDetailDrawer({ line }: { line?: LineCard }) {
                   value={line.activeContext.orderCode ?? "Assigned context"}
                 />
                 <DetailRow
+                  label="PO"
+                  value={line.activeContext.poNumber ?? "Waiting"}
+                />
+                <DetailRow
                   label="Customer"
                   value={line.activeContext.customerName ?? "Waiting"}
                 />
@@ -70,6 +74,18 @@ export function LineDetailDrawer({ line }: { line?: LineCard }) {
                 <DetailRow
                   label="Shipment date"
                   value={line.activeContext.shipmentDate ?? "Waiting"}
+                />
+                <DetailRow
+                  label="SMV"
+                  value={formatNumber(line.activeContext.smv)}
+                />
+                <DetailRow
+                  label="Planned operators"
+                  value={formatNumber(line.activeContext.plannedOperators)}
+                />
+                <DetailRow
+                  label="Planned target per day"
+                  value={formatNumber(line.activeContext.plannedTargetPerDay)}
                 />
               </>
             ) : (
@@ -138,4 +154,8 @@ function DetailRow({
       </span>
     </div>
   );
+}
+
+function formatNumber(value: number | null) {
+  return value === null ? "Waiting" : String(value);
 }

@@ -647,6 +647,7 @@ export async function getDatabaseReadinessChecklist(): Promise<
       materialReadiness,
       wipReadiness,
       lineContexts,
+      profiles,
     ] = await Promise.all([
       getCount("customers"),
       getCount("style_master"),
@@ -656,6 +657,7 @@ export async function getDatabaseReadinessChecklist(): Promise<
       getCount("material_readiness"),
       getCount("wip_readiness"),
       getCount("line_order_contexts"),
+      getCountSafe("profiles"),
     ]);
 
     return success({
@@ -685,7 +687,15 @@ export async function getDatabaseReadinessChecklist(): Promise<
         },
         inactiveItem("downtime schema not active yet"),
         inactiveItem("production actuals not active yet"),
-        inactiveItem("auth/roles not active yet"),
+        {
+          label: "auth/roles available for assignment",
+          status: profiles > 0 ? "loaded" : "waiting",
+          count: profiles,
+          detail:
+            profiles > 0
+              ? "Profiles table is available for role-gated assignment writes."
+              : "Assignment writes require authenticated users with profile roles.",
+        },
       ],
     });
   } catch (error) {
@@ -867,7 +877,7 @@ async function getActiveLineContexts(): Promise<Map<string, ActiveLineContext>> 
   const richResult = await client
     .from("line_order_contexts")
     .select(
-      "id, line_id, order_id, is_active, order_code, customer_name, style_code, color_name, shipment_date, orders(order_code, color_name, shipment_date, customers(customer_name), style_master(style_code))",
+      "id, line_id, order_id, customer_id, po_number, style_code, color_name, shipment_date, smv, planned_operators, planned_target_per_day, context_start_at, is_active, customers(customer_name), orders(order_code)",
     )
     .eq("is_active", true)
     .limit(1000);
@@ -876,7 +886,7 @@ async function getActiveLineContexts(): Promise<Map<string, ActiveLineContext>> 
     ? await client
         .from("line_order_contexts")
         .select(
-          "id, line_id, order_id, is_active, orders(order_code, customers(customer_name), style_master(style_code))",
+          "id, line_id, order_id, customer_id, po_number, style_code, color_name, shipment_date, smv, planned_operators, planned_target_per_day, context_start_at, is_active, orders(order_code)",
         )
         .eq("is_active", true)
         .limit(1000)
@@ -969,15 +979,15 @@ async function getAssignmentAuthState(): Promise<LineAssignmentCenterData["auth"
       hasSession: false,
       roleLogicActive: false,
       canWrite: false,
-      message: "Assignment writes require authentication and Planning/Admin role.",
+      message: "Assignment writes require authentication.",
     };
   }
 
   return {
     hasSession: true,
-    roleLogicActive: false,
+    roleLogicActive: true,
     canWrite: false,
-    message: "Role-gated assignment activation is coming next.",
+    message: "Browser role check is required before creating assignments.",
   };
 }
 
@@ -1360,34 +1370,36 @@ function lineCardFromViewRow(
 function activeContextFromRow(row: Record<string, unknown>): ActiveLineContext {
   const order = getSingleRelationship(
     row.orders as
-        | {
+      | {
           order_code?: string | null;
-          color_name?: string | null;
-          shipment_date?: string | null;
-          customers?: { customer_name?: string | null } | { customer_name?: string | null }[] | null;
-          style_master?: { style_code?: string | null } | { style_code?: string | null }[] | null;
         }
       | {
           order_code?: string | null;
-          color_name?: string | null;
-          shipment_date?: string | null;
-          customers?: { customer_name?: string | null } | { customer_name?: string | null }[] | null;
-          style_master?: { style_code?: string | null } | { style_code?: string | null }[] | null;
         }[]
       | null,
   );
-  const customer = getSingleRelationship(order?.customers);
-  const style = getSingleRelationship(order?.style_master);
+  const customer = getSingleRelationship(
+    row.customers as
+      | { customer_name?: string | null }
+      | { customer_name?: string | null }[]
+      | null,
+  );
 
   return {
     id: asString(row.id) ?? "",
     lineId: asString(row.line_id),
     orderId: asString(row.order_id),
-    orderCode: asString(row.order_code) ?? order?.order_code ?? null,
-    customerName: asString(row.customer_name) ?? customer?.customer_name ?? null,
-    styleCode: asString(row.style_code) ?? style?.style_code ?? null,
-    colorName: asString(row.color_name) ?? order?.color_name ?? null,
-    shipmentDate: asString(row.shipment_date) ?? order?.shipment_date ?? null,
+    customerId: asString(row.customer_id),
+    orderCode: order?.order_code ?? null,
+    poNumber: asString(row.po_number),
+    customerName: customer?.customer_name ?? null,
+    styleCode: asString(row.style_code),
+    colorName: asString(row.color_name),
+    shipmentDate: asString(row.shipment_date),
+    smv: asNumber(row.smv),
+    plannedOperators: asNumber(row.planned_operators),
+    plannedTargetPerDay: asNumber(row.planned_target_per_day),
+    contextStartAt: asString(row.context_start_at),
     isActive: asBoolean(row.is_active),
   };
 }

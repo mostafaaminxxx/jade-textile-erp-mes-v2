@@ -78,7 +78,7 @@ export function MiniLineCard({
 
       <p className="mt-3 text-xs font-semibold text-slate-500">
         {line.activeContext
-          ? line.activeContext.orderCode ?? "Active order context"
+          ? `Active context: ${line.activeContext.orderCode ?? line.activeContext.poNumber ?? "assigned"}`
           : "No active order context"}
       </p>
     </button>

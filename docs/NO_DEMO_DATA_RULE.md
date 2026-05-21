@@ -20,6 +20,9 @@ Required behavior:
 - Feed bars are shown only when `feed_percent` exists.
 - Customer, PO, style, shipment date, and production/feed details appear on line cards only when a real `line_order_contexts` row exists.
 - Since the current foundation has `line_order_contexts = 0`, line cards must show no active order context.
+- Assignment does not start production.
+- Assignment does not update feed percent.
+- Assignment does not create fake line status.
 
 Prompt 2 scope:
 
@@ -32,6 +35,12 @@ Prompt 3 scope:
 
 - Line Assignment Center may preview selected real orders and selected real lines.
 - It must not auto-assign orders to lines.
-- It must not call assignment writes until authentication, roles, and the reviewed RPC are active.
+
+Prompt 4B scope:
+
+- Assignment RPC is applied in Supabase.
+- Frontend assignment writes are enabled only for authenticated `ADMIN`, `MANAGER`, or `PLANNING` users.
+- The user must select one real line, select one real order, and confirm the assignment.
+- No test assignments, fake contexts, fake production, or fake feed values are allowed.
 
 This rule protects operational trust. A factory manager must be able to assume that every visible number is tied to a real record or is clearly marked unavailable.
