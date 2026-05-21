@@ -13,6 +13,7 @@ import {
   PackageCheck,
   Settings,
   ShieldAlert,
+  TestTube2,
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,11 @@ const navigation = [
   },
   { label: "Reports & Imports", href: "/app/reports-imports", icon: FileInput },
   { label: "Settings / Admin", href: "/app/settings-admin", icon: Settings },
+  {
+    label: "Preview & Test Center",
+    href: "/app/settings-admin/preview-test-center",
+    icon: TestTube2,
+  },
 ];
 
 export function SidebarNavigation() {

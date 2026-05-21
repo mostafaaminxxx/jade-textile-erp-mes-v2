@@ -13,6 +13,7 @@ The shell has exactly these top-level sections:
 9. Management Action Center
 10. Reports & Imports
 11. Settings / Admin
+12. Preview & Test Center
 
 Routes:
 
@@ -30,5 +31,6 @@ Routes:
 - `/app/management-action-center`
 - `/app/reports-imports`
 - `/app/settings-admin`
+- `/app/settings-admin/preview-test-center`
 
 The app intentionally avoids duplicate dashboard pages and broad page sprawl.

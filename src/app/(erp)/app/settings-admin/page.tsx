@@ -1,4 +1,14 @@
-import { CheckCircle2, Database, KeyRound, ServerCog, ShieldCheck, XCircle } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Database,
+  KeyRound,
+  ServerCog,
+  ShieldCheck,
+  TestTube2,
+  XCircle,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { ProfileStatusPanel } from "@/components/auth/ProfileStatusPanel";
 import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
@@ -118,6 +128,31 @@ export default async function SettingsAdminPage() {
                   </div>
                 )}
               </DataConnectionGate>
+            </section>
+
+            <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-jade-panel text-jade-blue">
+                    <TestTube2 className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-jade-ink">
+                      Preview & Controlled Test Center
+                    </h2>
+                    <p className="mt-1 text-sm font-semibold text-jade-steel">
+                      Review environment, auth/profile readiness, and controlled assignment testing.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/app/settings-admin/preview-test-center"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-jade-blue px-4 py-3 text-sm font-black text-white transition hover:bg-blue-800"
+                >
+                  Open Preview Test Center
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
             </section>
           </div>
         )}

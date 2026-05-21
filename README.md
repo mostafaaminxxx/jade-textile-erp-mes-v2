@@ -77,8 +77,11 @@ Before the first assignment test:
 - copy the auth user id from the profile status panel
 - manually create the first real `ADMIN`, `MANAGER`, or `PLANNING` profile in Supabase
 - follow `docs/CONTROLLED_ASSIGNMENT_TEST.md`
+- use `/app/settings-admin/preview-test-center` to review readiness and copy the SQL templates
 
 Manual SQL templates are in `supabase/manual/`. They are review-only and must not be applied automatically.
+
+The frontend does not create profiles automatically. Controlled assignment must still be user-selected from real lines and real orders.
 
 ## No Demo Data Rule
 

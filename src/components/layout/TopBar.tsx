@@ -24,7 +24,7 @@ export function TopBar() {
       <div className="flex items-center gap-2">
         <span className="hidden items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold uppercase text-orange-900 sm:inline-flex">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-          Auth not configured yet
+          Profile-gated writes
         </span>
         <span className="inline-flex items-center gap-2 rounded-full border border-jade-line bg-white px-3 py-1.5 text-xs font-bold uppercase text-jade-steel">
           <Database className="h-3.5 w-3.5" aria-hidden="true" />

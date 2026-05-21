@@ -7,13 +7,14 @@ Use this guide only after a real Supabase Auth user exists and a real profile ro
 1. Configure `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 2. Run the app locally.
 3. Sign up or sign in from `/login`.
-4. Copy the auth user id from `ProfileStatusPanel`.
-5. Run `supabase/manual/001_create_first_admin_profile.sql` manually in Supabase SQL Editor after replacing `REPLACE_WITH_AUTH_USER_ID`.
-6. Refresh the app and confirm the profile role is `ADMIN`, `MANAGER`, or `PLANNING`.
-7. Open `/app/orders-planning/line-assignment`.
-8. Select one real production line.
-9. Select one real order.
-10. Confirm assignment with change reason: `Controlled first assignment test`.
+4. Open `/app/settings-admin/preview-test-center`.
+5. Copy the auth user id from `ProfileStatusPanel`.
+6. Copy `supabase/manual/001_create_first_admin_profile.sql` from the in-app SQL block or local file, then run it manually in Supabase SQL Editor after replacing `REPLACE_WITH_AUTH_USER_ID`.
+7. Refresh the app and confirm the profile role is `ADMIN`, `MANAGER`, or `PLANNING`.
+8. Open `/app/orders-planning/line-assignment`.
+9. Select one real production line.
+10. Select one real order.
+11. Confirm assignment with change reason: `Controlled first assignment test`.
 
 ## Verify
 
@@ -33,3 +34,5 @@ Use `supabase/manual/002_rollback_controlled_assignment_test.sql` only if the co
 - `REPLACE_WITH_LINE_ID`
 
 The rollback closes the selected context and clears `current_context_id` for the selected line/context only. It does not change line status, feed percent, or feed cover days.
+
+The frontend does not create profiles automatically and does not run setup or rollback SQL.

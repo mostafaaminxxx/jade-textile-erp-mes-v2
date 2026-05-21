@@ -308,6 +308,40 @@ export interface AuthProfileReadinessData {
   assignmentAllowedProfiles: number;
 }
 
+export interface PreviewTestCenterData {
+  environment: {
+    supabaseConfigured: boolean;
+    hasProjectUrl: boolean;
+    hasAnonKey: boolean;
+    projectUrl: string;
+    exposesServiceRole: false;
+  };
+  databaseCounts: {
+    customers: number;
+    productionGroups: number;
+    productionLines: number;
+    styleMaster: number;
+    orders: number;
+    productionPlans: number;
+    materialReadiness: number;
+    wipReadiness: number;
+    profiles: number;
+    activeProfiles: number;
+    assignmentAllowedProfiles: number;
+    lineOrderContexts: number;
+    lineCurrentStateWithContext: number;
+  };
+  readiness: {
+    supabaseConnected: boolean;
+    hasRealLines: boolean;
+    hasRealOrders: boolean;
+    hasAssignmentAllowedProfile: boolean;
+    assignmentRpcConfigured: boolean;
+    feedFieldsProtected: boolean;
+  };
+  warnings: string[];
+}
+
 export interface ExecutiveSummary {
   activeGroups: number;
   productionLines: number;

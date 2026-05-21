@@ -28,6 +28,7 @@ import type {
   LineDetailData,
   MaterialWipReadinessData,
   OrdersPlanningData,
+  PreviewTestCenterData,
   ProductionLineWithGroup,
   ReadinessSummary,
   ReportsImportsData,
@@ -125,6 +126,28 @@ async function getFilteredCountSafe(
     .from(tableName)
     .select("*", { count: "exact", head: true })
     .eq(column, value);
+
+  if (error) {
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+async function getNotNullCountSafe(
+  tableName: string,
+  column: string,
+): Promise<number> {
+  const client = ensureClient();
+
+  if (!client) {
+    return 0;
+  }
+
+  const { count, error } = await client
+    .from(tableName)
+    .select("*", { count: "exact", head: true })
+    .not(column, "is", null);
 
   if (error) {
     return 0;
@@ -570,6 +593,99 @@ export async function getAuthProfileReadinessData(): Promise<
   } catch (error) {
     return errorResult(
       "Unable to load auth profile readiness.",
+      getErrorMessage(error),
+    );
+  }
+}
+
+export async function getPreviewTestCenterData(): Promise<
+  FactoryDataResult<PreviewTestCenterData>
+> {
+  const config = getSupabasePublicConfig();
+  const client = ensureClient();
+
+  if (!client || !config.isConfigured) {
+    return notConfigured();
+  }
+
+  try {
+    const [
+      customers,
+      productionGroups,
+      productionLines,
+      styleMaster,
+      orders,
+      productionPlans,
+      materialReadiness,
+      wipReadiness,
+      profileReadiness,
+      lineOrderContexts,
+      lineCurrentStateWithContext,
+    ] = await Promise.all([
+      getCount("customers"),
+      getCount("production_groups"),
+      getCount("production_lines"),
+      getCount("style_master"),
+      getCount("orders"),
+      getCount("production_plans"),
+      getCount("material_readiness"),
+      getCount("wip_readiness"),
+      getProfileReadinessCounts(),
+      getCount("line_order_contexts"),
+      getNotNullCountSafe("line_current_state", "current_context_id"),
+    ]);
+
+    const warnings: string[] = [];
+
+    if (profileReadiness.profilesTotal === 0) {
+      warnings.push("First admin profile is required before assignment testing.");
+    }
+
+    if (lineOrderContexts === 0) {
+      warnings.push("No line-order contexts exist yet. Controlled assignment test has not run.");
+    }
+
+    if (lineCurrentStateWithContext === 0) {
+      warnings.push("No line current state row is linked to a context yet.");
+    }
+
+    return success({
+      environment: {
+        supabaseConfigured: config.isConfigured,
+        hasProjectUrl: config.hasUrl,
+        hasAnonKey: config.hasAnonKey,
+        projectUrl: config.url,
+        exposesServiceRole: false,
+      },
+      databaseCounts: {
+        customers,
+        productionGroups,
+        productionLines,
+        styleMaster,
+        orders,
+        productionPlans,
+        materialReadiness,
+        wipReadiness,
+        profiles: profileReadiness.profilesTotal,
+        activeProfiles: profileReadiness.activeProfiles,
+        assignmentAllowedProfiles: profileReadiness.assignmentAllowedProfiles,
+        lineOrderContexts,
+        lineCurrentStateWithContext,
+      },
+      readiness: {
+        supabaseConnected: config.isConfigured,
+        hasRealLines: productionLines > 0,
+        hasRealOrders: orders > 0,
+        hasAssignmentAllowedProfile:
+          profileReadiness.assignmentAllowedProfiles > 0,
+        assignmentRpcConfigured: true,
+        feedFieldsProtected: true,
+      },
+      warnings,
+    });
+  } catch (error) {
+    return errorResult(
+      "Unable to load preview and controlled test readiness.",
       getErrorMessage(error),
     );
   }
