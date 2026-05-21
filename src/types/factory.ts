@@ -219,6 +219,7 @@ export interface LineAssignmentCenterData {
     canWrite: boolean;
     message: string;
   };
+  profileReadiness: AuthProfileReadinessData;
 }
 
 export interface ReadinessSummary {
@@ -299,6 +300,12 @@ export interface DatabaseReadinessChecklist {
     count: number | null;
     detail: string;
   }>;
+}
+
+export interface AuthProfileReadinessData {
+  profilesTotal: number;
+  activeProfiles: number;
+  assignmentAllowedProfiles: number;
 }
 
 export interface ExecutiveSummary {

@@ -101,7 +101,7 @@ export async function getCurrentUserProfileClient(): Promise<CurrentUserProfileR
     return {
       user: userResult.user,
       profile: null,
-      message: "User profile not found. Assignment requires a profile role.",
+      message: "Signed in, but profile role is missing. Ask Admin to create/activate your profile.",
     };
   }
 
@@ -138,7 +138,7 @@ export async function getCurrentUserRoleClient(): Promise<CurrentUserRoleResult>
       profile: profileResult.profile,
       role: null,
       canAssignLineOrderContext: false,
-      message: "User profile not found. Assignment requires a profile role.",
+      message: "Signed in, but profile role is missing. Ask Admin to create/activate your profile.",
     };
   }
 

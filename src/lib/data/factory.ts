@@ -12,6 +12,7 @@ import type {
 } from "@/types/database";
 import type {
   ActiveLineContext,
+  AuthProfileReadinessData,
   DatabaseReadinessChecklist,
   ExecutiveCommandCenterData,
   ExecutiveSummary,
@@ -469,7 +470,15 @@ export async function getLineAssignmentCenterData(): Promise<
   }
 
   try {
-    const [groupsResult, linesResult, orders, materialRows, wipRows, auth] =
+    const [
+      groupsResult,
+      linesResult,
+      orders,
+      materialRows,
+      wipRows,
+      auth,
+      profileReadiness,
+    ] =
       await Promise.all([
         getFactoryGroups(),
         getLineCards(),
@@ -477,6 +486,7 @@ export async function getLineAssignmentCenterData(): Promise<
         getAssignmentRows("material_readiness"),
         getAssignmentRows("wip_readiness"),
         getAssignmentAuthState(),
+        getProfileReadinessCounts(),
       ]);
 
     if (groupsResult.status !== "success") {
@@ -517,6 +527,10 @@ export async function getLineAssignmentCenterData(): Promise<
       warnings.push("line_order_contexts is empty; all lines are waiting for real assignment.");
     }
 
+    if (profileReadiness.profilesTotal === 0) {
+      warnings.push("No profiles exist yet. First admin setup is required.");
+    }
+
     return success({
       groups: groupsResult.data,
       availableLines: linesResult.data,
@@ -532,10 +546,30 @@ export async function getLineAssignmentCenterData(): Promise<
       currentActiveLineContexts,
       warnings,
       auth,
+      profileReadiness,
     });
   } catch (error) {
     return errorResult(
       "Unable to load line assignment center data.",
+      getErrorMessage(error),
+    );
+  }
+}
+
+export async function getAuthProfileReadinessData(): Promise<
+  FactoryDataResult<AuthProfileReadinessData>
+> {
+  const client = ensureClient();
+
+  if (!client) {
+    return notConfigured();
+  }
+
+  try {
+    return success(await getProfileReadinessCounts());
+  } catch (error) {
+    return errorResult(
+      "Unable to load auth profile readiness.",
       getErrorMessage(error),
     );
   }
@@ -989,6 +1023,40 @@ async function getAssignmentAuthState(): Promise<LineAssignmentCenterData["auth"
     canWrite: false,
     message: "Browser role check is required before creating assignments.",
   };
+}
+
+async function getProfileReadinessCounts(): Promise<AuthProfileReadinessData> {
+  const [profilesTotal, activeProfiles, assignmentAllowedProfiles] = await Promise.all([
+    getCountSafe("profiles"),
+    getFilteredCountSafe("profiles", "is_active", true),
+    getAssignmentAllowedProfileCount(),
+  ]);
+
+  return {
+    profilesTotal,
+    activeProfiles,
+    assignmentAllowedProfiles,
+  };
+}
+
+async function getAssignmentAllowedProfileCount() {
+  const client = ensureClient();
+
+  if (!client) {
+    return 0;
+  }
+
+  const { count, error } = await client
+    .from("profiles")
+    .select("*", { count: "exact", head: true })
+    .eq("is_active", true)
+    .in("role", ["ADMIN", "MANAGER", "PLANNING"]);
+
+  if (error) {
+    return 0;
+  }
+
+  return count ?? 0;
 }
 
 async function getOrdersByCustomer(): Promise<LabelCount[]> {

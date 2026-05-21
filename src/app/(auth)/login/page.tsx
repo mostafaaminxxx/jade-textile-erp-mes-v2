@@ -1,46 +1,47 @@
 import Link from "next/link";
-import { Factory, ShieldCheck } from "lucide-react";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { ArrowRight, Factory } from "lucide-react";
+import { LoginAuthPanel } from "@/components/auth/LoginAuthPanel";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-10">
-      <section className="w-full max-w-md rounded-lg border border-jade-line bg-white p-8 shadow-control">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-jade-blue text-white">
-            <Factory className="h-6 w-6" aria-hidden="true" />
+    <main className="min-h-screen bg-jade-bg px-6 py-10">
+      <section className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[420px_1fr] lg:items-start">
+        <div className="pt-4">
+          <div className="mb-8 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-jade-blue text-white">
+              <Factory className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-jade-orange">
+                Jade Textile
+              </p>
+              <h1 className="text-3xl font-black text-jade-ink">ERP/MES V2 Login</h1>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-jade-orange">
-              Jade Textile
+
+          <div className="space-y-4 text-sm leading-7 text-jade-steel">
+            <p>
+              Sign in with a real Supabase Auth account. Operational writes remain
+              blocked until an admin creates and activates a matching profile role.
             </p>
-            <h1 className="text-2xl font-bold text-jade-ink">ERP/MES V2</h1>
+            <p>
+              Sign up creates only the auth user. It does not create an admin profile,
+              assign a role, or enable factory writes by itself.
+            </p>
           </div>
+
+          <Link
+            href="/app"
+            className="mt-8 inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-jade-blue px-4 py-3 text-sm font-black text-white transition hover:bg-blue-800"
+          >
+            Open factory shell
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
 
-        <div className="rounded-md border border-dashed border-jade-line bg-jade-panel p-5">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-jade-ink">
-            <ShieldCheck className="h-4 w-4 text-jade-blue" aria-hidden="true" />
-            Auth-ready shell
-          </div>
-          <p className="text-sm leading-6 text-jade-steel">
-            Authentication is not enforced yet. Local development can view the
-            factory shell while Supabase Auth and role policies are wired.
-          </p>
-        </div>
-
-        <div className="mt-6 rounded-md bg-orange-50 px-4 py-3 text-sm font-medium text-orange-900">
-          {isSupabaseConfigured
-            ? "Supabase client variables are present."
-            : "Supabase connection required."}
-        </div>
-
-        <Link
-          href="/app"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-jade-blue px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-800"
-        >
-          Open factory shell
-        </Link>
+        <section className="rounded-lg border border-jade-line bg-white p-6 shadow-control">
+          <LoginAuthPanel />
+        </section>
       </section>
     </main>
   );

@@ -134,6 +134,7 @@ export function LineAssignmentCenter({
     order: selectedOrder,
     roleState,
     isSubmitting,
+    profilesTotal: data.profileReadiness.profilesTotal,
   });
   const canOpenConfirm = disabledReason === "Ready to create assignment.";
 
@@ -207,6 +208,12 @@ export function LineAssignmentCenter({
           {submitMessage.contextId ? (
             <p className="mt-1 font-mono text-xs">Context id: {submitMessage.contextId}</p>
           ) : null}
+        </div>
+      ) : null}
+
+      {data.profileReadiness.profilesTotal === 0 ? (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-900">
+          No profiles exist yet. First admin setup is required.
         </div>
       ) : null}
 
@@ -643,11 +650,13 @@ function getAssignmentDisabledReason({
   order,
   roleState,
   isSubmitting,
+  profilesTotal,
 }: {
   line?: LineCard;
   order?: LineAssignmentOrder;
   roleState: RoleState;
   isSubmitting: boolean;
+  profilesTotal: number;
 }) {
   if (!line) {
     return "Select a real line.";
@@ -663,6 +672,10 @@ function getAssignmentDisabledReason({
 
   if (!roleState.hasUser) {
     return "Authentication required.";
+  }
+
+  if (profilesTotal === 0) {
+    return "No profiles exist yet. First admin setup is required.";
   }
 
   if (!roleState.canWriteAssignment) {

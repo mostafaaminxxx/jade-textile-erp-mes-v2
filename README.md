@@ -65,6 +65,21 @@ If Supabase environment variables are missing, the UI shows `Supabase connection
 
 If Supabase is connected but a table or view has no rows, the UI shows `Waiting for real factory data.`
 
+## Auth and Profile Setup
+
+`/login` supports real Supabase Auth sign in, sign up, and sign out.
+
+Sign up creates only a real auth user. It does not create an admin profile, assign a role, or enable operational writes.
+
+Before the first assignment test:
+
+- sign up or sign in from `/login`
+- copy the auth user id from the profile status panel
+- manually create the first real `ADMIN`, `MANAGER`, or `PLANNING` profile in Supabase
+- follow `docs/CONTROLLED_ASSIGNMENT_TEST.md`
+
+Manual SQL templates are in `supabase/manual/`. They are review-only and must not be applied automatically.
+
 ## No Demo Data Rule
 
 The V2 shell must never:

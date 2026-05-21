@@ -1,14 +1,21 @@
 import { CheckCircle2, Database, KeyRound, ServerCog, ShieldCheck, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
+import { ProfileStatusPanel } from "@/components/auth/ProfileStatusPanel";
 import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { getDatabaseReadinessChecklist } from "@/lib/data/factory";
+import {
+  getAuthProfileReadinessData,
+  getDatabaseReadinessChecklist,
+} from "@/lib/data/factory";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsAdminPage() {
-  const checklist = await getDatabaseReadinessChecklist();
+  const [checklist, profileReadiness] = await Promise.all([
+    getDatabaseReadinessChecklist(),
+    getAuthProfileReadinessData(),
+  ]);
   const environment = process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local";
 
   return (
@@ -21,7 +28,8 @@ export default async function SettingsAdminPage() {
 
       <DataConnectionGate result={checklist}>
         {(data) => (
-          <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+          <div className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
             <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
               <h2 className="text-lg font-bold text-jade-ink">Connection status</h2>
               <div className="mt-5 space-y-3 text-sm">
@@ -77,10 +85,53 @@ export default async function SettingsAdminPage() {
                 ))}
               </div>
             </section>
+            </div>
+
+            <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-jade-ink">Auth & Profile Readiness</h2>
+              <p className="mt-1 text-sm font-semibold text-jade-steel">
+                Assignment writes require a real signed-in user with an active profile role.
+              </p>
+              <DataConnectionGate result={profileReadiness}>
+                {(profileData) => (
+                  <div className="mt-5 space-y-5">
+                    {profileData.profilesTotal === 0 ? (
+                      <div className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-900">
+                        No profiles exist yet. Create the first admin/planning profile in Supabase before testing assignments.
+                      </div>
+                    ) : null}
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <ReadinessMetric
+                        label="profiles_total"
+                        value={profileData.profilesTotal}
+                      />
+                      <ReadinessMetric
+                        label="active_profiles"
+                        value={profileData.activeProfiles}
+                      />
+                      <ReadinessMetric
+                        label="assignment_allowed_profiles"
+                        value={profileData.assignmentAllowedProfiles}
+                      />
+                    </div>
+                    <ProfileStatusPanel compact />
+                  </div>
+                )}
+              </DataConnectionGate>
+            </section>
           </div>
         )}
       </DataConnectionGate>
     </>
+  );
+}
+
+function ReadinessMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border border-slate-100 bg-slate-50 p-4">
+      <p className="text-2xl font-black text-jade-ink">{value}</p>
+      <p className="mt-1 text-xs font-bold uppercase text-jade-steel">{label}</p>
+    </div>
   );
 }
 
