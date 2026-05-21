@@ -40,6 +40,8 @@ export interface ActiveLineContext {
   orderCode: string | null;
   customerName: string | null;
   styleCode: string | null;
+  colorName: string | null;
+  shipmentDate: string | null;
   isActive: boolean | null;
 }
 
@@ -163,6 +165,8 @@ export interface OrdersPlanningData {
   routeCount: number;
   dailyQuantityRows: number;
   lineOrderContexts: number;
+  activeLineOrderContexts: number;
+  waitingLines: number;
   byCustomer: LabelCount[];
   nearestShipmentDates: Array<{
     orderCode: string;
@@ -174,6 +178,41 @@ export interface OrdersPlanningData {
     rows: number;
     quantity: number | null;
   }>;
+}
+
+export interface LineAssignmentOrder {
+  id: string;
+  orderCode: string;
+  poNumber: string | null;
+  customerId: string | null;
+  customerName: string;
+  styleCode: string | null;
+  colorName: string | null;
+  shipmentDate: string | null;
+  orderQuantity: number | null;
+  orderStatus: string | null;
+  materialReadinessStatus: string | null;
+  wipReadinessHint: string | null;
+  wipMatchType: "order" | "customer_level" | "none";
+  warnings: string[];
+}
+
+export interface LineAssignmentCenterData {
+  groups: ProductionGroup[];
+  availableLines: LineCard[];
+  linesWithActiveContext: number;
+  linesWaitingForContext: number;
+  openOrders: LineAssignmentOrder[];
+  ordersWithMaterialReadiness: number;
+  ordersWithWipReadiness: number;
+  currentActiveLineContexts: ActiveLineContext[];
+  warnings: string[];
+  auth: {
+    hasSession: boolean;
+    roleLogicActive: boolean;
+    canWrite: boolean;
+    message: string;
+  };
 }
 
 export interface ReadinessSummary {

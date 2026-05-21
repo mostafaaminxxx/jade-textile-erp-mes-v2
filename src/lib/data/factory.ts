@@ -21,6 +21,8 @@ import type {
   GroupWithLines,
   ImportBatchSummary,
   LabelCount,
+  LineAssignmentCenterData,
+  LineAssignmentOrder,
   LineCard,
   LineDetailData,
   MaterialWipReadinessData,
@@ -414,14 +416,23 @@ export async function getOrdersPlanningData(): Promise<
   }
 
   try {
-    const [totalOrders, productionPlans, routeCount, dailyQuantityRows, contexts] =
-      await Promise.all([
-        getCount("orders"),
-        getCount("production_plans"),
-        getCount("order_operation_routes"),
-        getCount("production_plan_daily_quantities"),
-        getCount("line_order_contexts"),
-      ]);
+    const [
+      totalOrders,
+      productionPlans,
+      routeCount,
+      dailyQuantityRows,
+      contexts,
+      activeContexts,
+      waitingLines,
+    ] = await Promise.all([
+      getCount("orders"),
+      getCount("production_plans"),
+      getCount("order_operation_routes"),
+      getCount("production_plan_daily_quantities"),
+      getCount("line_order_contexts"),
+      getFilteredCountSafe("line_order_contexts", "is_active", true),
+      getFilteredCountSafe("line_current_state", "line_status", "WAITING_FOR_DATA"),
+    ]);
 
     if (totalOrders === 0) {
       return empty();
@@ -437,12 +448,96 @@ export async function getOrdersPlanningData(): Promise<
       routeCount,
       dailyQuantityRows,
       lineOrderContexts: contexts,
+      activeLineOrderContexts: activeContexts,
+      waitingLines,
       byCustomer,
       nearestShipmentDates,
       weekQuantitySummary,
     });
   } catch (error) {
     return errorResult("Unable to load orders planning data.", getErrorMessage(error));
+  }
+}
+
+export async function getLineAssignmentCenterData(): Promise<
+  FactoryDataResult<LineAssignmentCenterData>
+> {
+  const client = ensureClient();
+
+  if (!client) {
+    return notConfigured();
+  }
+
+  try {
+    const [groupsResult, linesResult, orders, materialRows, wipRows, auth] =
+      await Promise.all([
+        getFactoryGroups(),
+        getLineCards(),
+        getAssignmentOrders(),
+        getAssignmentRows("material_readiness"),
+        getAssignmentRows("wip_readiness"),
+        getAssignmentAuthState(),
+      ]);
+
+    if (groupsResult.status !== "success") {
+      return groupsResult as FactoryDataResult<LineAssignmentCenterData>;
+    }
+
+    if (linesResult.status !== "success") {
+      return linesResult as FactoryDataResult<LineAssignmentCenterData>;
+    }
+
+    if (orders.length === 0) {
+      return empty();
+    }
+
+    const materialByOrder = groupRowsByKey(materialRows, "order_id");
+    const wipByOrder = groupRowsByKey(wipRows, "order_id");
+    const wipByCustomer = groupRowsByKey(wipRows, "customer_id");
+    const openOrders = orders
+      .filter(isOpenOrderRow)
+      .map((order) =>
+        assignmentOrderFromRow(
+          order,
+          materialByOrder.get(asString(order.id) ?? "") ?? [],
+          wipByOrder.get(asString(order.id) ?? "") ?? [],
+          wipByCustomer.get(asString(order.customer_id) ?? "") ?? [],
+        ),
+      );
+    const currentActiveLineContexts = linesResult.data.flatMap((line) =>
+      line.activeContext ? [line.activeContext] : [],
+    );
+    const linesWithActiveContext = currentActiveLineContexts.length;
+    const warnings = [
+      "No automatic assignments are created.",
+      "Assignment writes require authentication and Planning/Admin role.",
+    ];
+
+    if (linesWithActiveContext === 0) {
+      warnings.push("line_order_contexts is empty; all lines are waiting for real assignment.");
+    }
+
+    return success({
+      groups: groupsResult.data,
+      availableLines: linesResult.data,
+      linesWithActiveContext,
+      linesWaitingForContext: linesResult.data.length - linesWithActiveContext,
+      openOrders,
+      ordersWithMaterialReadiness: openOrders.filter(
+        (order) => order.materialReadinessStatus !== null,
+      ).length,
+      ordersWithWipReadiness: openOrders.filter(
+        (order) => order.wipMatchType !== "none",
+      ).length,
+      currentActiveLineContexts,
+      warnings,
+      auth,
+    });
+  } catch (error) {
+    return errorResult(
+      "Unable to load line assignment center data.",
+      getErrorMessage(error),
+    );
   }
 }
 
@@ -769,20 +864,30 @@ async function getActiveLineContexts(): Promise<Map<string, ActiveLineContext>> 
     return new Map();
   }
 
-  const { data, error } = await client
+  const richResult = await client
     .from("line_order_contexts")
     .select(
-      "id, line_id, order_id, is_active, orders(order_code, customers(customer_name), style_master(style_code))",
+      "id, line_id, order_id, is_active, order_code, customer_name, style_code, color_name, shipment_date, orders(order_code, color_name, shipment_date, customers(customer_name), style_master(style_code))",
     )
     .eq("is_active", true)
     .limit(1000);
 
-  if (error || !data) {
+  const fallbackResult = richResult.error
+    ? await client
+        .from("line_order_contexts")
+        .select(
+          "id, line_id, order_id, is_active, orders(order_code, customers(customer_name), style_master(style_code))",
+        )
+        .eq("is_active", true)
+        .limit(1000)
+    : richResult;
+
+  if (fallbackResult.error || !fallbackResult.data) {
     return new Map();
   }
 
   return new Map(
-    (data as Record<string, unknown>[]).flatMap((row) => {
+    (fallbackResult.data as unknown as Record<string, unknown>[]).flatMap((row) => {
       const lineId = asString(row.line_id);
 
       if (!lineId) {
@@ -793,6 +898,87 @@ async function getActiveLineContexts(): Promise<Map<string, ActiveLineContext>> 
       return [[lineId, context]];
     }),
   );
+}
+
+async function getAssignmentOrders(): Promise<Record<string, unknown>[]> {
+  const client = ensureClient();
+
+  if (!client) {
+    return [];
+  }
+
+  const richResult = await client
+    .from("orders")
+    .select("*, customers(customer_name), style_master(style_code)")
+    .limit(2000);
+
+  if (!richResult.error && richResult.data) {
+    return richResult.data as unknown as Record<string, unknown>[];
+  }
+
+  const customerResult = await client
+    .from("orders")
+    .select("*, customers(customer_name)")
+    .limit(2000);
+
+  if (!customerResult.error && customerResult.data) {
+    return customerResult.data as unknown as Record<string, unknown>[];
+  }
+
+  const fallbackResult = await client.from("orders").select("*").limit(2000);
+
+  if (fallbackResult.error || !fallbackResult.data) {
+    return [];
+  }
+
+  return fallbackResult.data as unknown as Record<string, unknown>[];
+}
+
+async function getAssignmentRows(tableName: string): Promise<Record<string, unknown>[]> {
+  const client = ensureClient();
+
+  if (!client) {
+    return [];
+  }
+
+  const { data, error } = await client.from(tableName).select("*").limit(5000);
+
+  if (error || !data) {
+    return [];
+  }
+
+  return data as unknown as Record<string, unknown>[];
+}
+
+async function getAssignmentAuthState(): Promise<LineAssignmentCenterData["auth"]> {
+  const client = ensureClient();
+
+  if (!client) {
+    return {
+      hasSession: false,
+      roleLogicActive: false,
+      canWrite: false,
+      message: CONNECTION_REQUIRED,
+    };
+  }
+
+  const { data, error } = await client.auth.getUser();
+
+  if (error || !data.user) {
+    return {
+      hasSession: false,
+      roleLogicActive: false,
+      canWrite: false,
+      message: "Assignment writes require authentication and Planning/Admin role.",
+    };
+  }
+
+  return {
+    hasSession: true,
+    roleLogicActive: false,
+    canWrite: false,
+    message: "Role-gated assignment activation is coming next.",
+  };
 }
 
 async function getOrdersByCustomer(): Promise<LabelCount[]> {
@@ -1174,13 +1360,17 @@ function lineCardFromViewRow(
 function activeContextFromRow(row: Record<string, unknown>): ActiveLineContext {
   const order = getSingleRelationship(
     row.orders as
-      | {
+        | {
           order_code?: string | null;
+          color_name?: string | null;
+          shipment_date?: string | null;
           customers?: { customer_name?: string | null } | { customer_name?: string | null }[] | null;
           style_master?: { style_code?: string | null } | { style_code?: string | null }[] | null;
         }
       | {
           order_code?: string | null;
+          color_name?: string | null;
+          shipment_date?: string | null;
           customers?: { customer_name?: string | null } | { customer_name?: string | null }[] | null;
           style_master?: { style_code?: string | null } | { style_code?: string | null }[] | null;
         }[]
@@ -1193,9 +1383,11 @@ function activeContextFromRow(row: Record<string, unknown>): ActiveLineContext {
     id: asString(row.id) ?? "",
     lineId: asString(row.line_id),
     orderId: asString(row.order_id),
-    orderCode: order?.order_code ?? null,
-    customerName: customer?.customer_name ?? null,
-    styleCode: style?.style_code ?? null,
+    orderCode: asString(row.order_code) ?? order?.order_code ?? null,
+    customerName: asString(row.customer_name) ?? customer?.customer_name ?? null,
+    styleCode: asString(row.style_code) ?? style?.style_code ?? null,
+    colorName: asString(row.color_name) ?? order?.color_name ?? null,
+    shipmentDate: asString(row.shipment_date) ?? order?.shipment_date ?? null,
     isActive: asBoolean(row.is_active),
   };
 }
@@ -1206,6 +1398,164 @@ function findContextById(
 ) {
   return (
     Array.from(contexts.values()).find((context) => context.id === contextId) ?? null
+  );
+}
+
+function assignmentOrderFromRow(
+  row: Record<string, unknown>,
+  materialRows: Record<string, unknown>[],
+  exactWipRows: Record<string, unknown>[],
+  customerWipRows: Record<string, unknown>[],
+): LineAssignmentOrder {
+  const customer = getSingleRelationship(
+    row.customers as { customer_name?: string | null } | { customer_name?: string | null }[] | null,
+  );
+  const style = getSingleRelationship(
+    row.style_master as { style_code?: string | null } | { style_code?: string | null }[] | null,
+  );
+  const materialStatus = summarizeRowStatuses(materialRows, [
+    "readiness_status",
+    "material_status",
+    "status",
+  ]);
+  const wipMatchType =
+    exactWipRows.length > 0
+      ? "order"
+      : customerWipRows.length > 0
+        ? "customer_level"
+        : "none";
+  const warnings: string[] = [];
+
+  if (!materialStatus) {
+    warnings.push("Order has no material readiness record.");
+  }
+
+  if (materialStatus === "BLOCKED") {
+    warnings.push("Order has blocked material readiness.");
+  }
+
+  if (wipMatchType === "customer_level") {
+    warnings.push(
+      "WIP exists at customer/sewing-type/sub-type level and needs planning confirmation.",
+    );
+  }
+
+  if (wipMatchType === "none") {
+    warnings.push("Order has no matching WIP readiness record yet.");
+  }
+
+  return {
+    id: asString(row.id) ?? "",
+    orderCode:
+      asString(row.order_code) ??
+      asString(row.order_no) ??
+      asString(row.code) ??
+      "Uncoded order",
+    poNumber:
+      asString(row.po_number) ??
+      asString(row.customer_po) ??
+      asString(row.po) ??
+      null,
+    customerId: asString(row.customer_id),
+    customerName:
+      customer?.customer_name ??
+      asString(row.customer_name) ??
+      "Unassigned customer",
+    styleCode:
+      style?.style_code ??
+      asString(row.style_code) ??
+      asString(row.style_no) ??
+      null,
+    colorName: asString(row.color_name) ?? asString(row.color) ?? null,
+    shipmentDate:
+      asString(row.shipment_date) ??
+      asString(row.ex_factory_date) ??
+      asString(row.delivery_date) ??
+      null,
+    orderQuantity:
+      asNumber(row.order_quantity) ??
+      asNumber(row.total_quantity) ??
+      asNumber(row.quantity) ??
+      asNumber(row.qty),
+    orderStatus:
+      asString(row.order_status) ??
+      asString(row.status) ??
+      asString(row.production_status),
+    materialReadinessStatus: materialStatus,
+    wipReadinessHint:
+      wipMatchType === "order"
+        ? `${exactWipRows.length} WIP readiness row(s) linked to this order.`
+        : wipMatchType === "customer_level"
+          ? "WIP exists at customer/sewing-type/sub-type level and needs planning confirmation."
+          : null,
+    wipMatchType,
+    warnings,
+  };
+}
+
+function groupRowsByKey(rows: Record<string, unknown>[], key: string) {
+  const grouped = new Map<string, Record<string, unknown>[]>();
+
+  for (const row of rows) {
+    const value = asString(row[key]);
+
+    if (!value) {
+      continue;
+    }
+
+    const current = grouped.get(value) ?? [];
+    current.push(row);
+    grouped.set(value, current);
+  }
+
+  return grouped;
+}
+
+function summarizeRowStatuses(
+  rows: Record<string, unknown>[],
+  candidateColumns: string[],
+) {
+  const statuses = new Set<string>();
+
+  for (const row of rows) {
+    for (const column of candidateColumns) {
+      const value = asString(row[column]);
+
+      if (value) {
+        statuses.add(value);
+      }
+    }
+  }
+
+  if (statuses.size === 0) {
+    return null;
+  }
+
+  if (statuses.size === 1) {
+    return Array.from(statuses)[0];
+  }
+
+  if (statuses.has("BLOCKED")) {
+    return "BLOCKED";
+  }
+
+  return "MULTIPLE";
+}
+
+function isOpenOrderRow(row: Record<string, unknown>) {
+  const status = (
+    asString(row.order_status) ??
+    asString(row.status) ??
+    asString(row.production_status) ??
+    ""
+  ).toUpperCase();
+
+  if (!status) {
+    return true;
+  }
+
+  return !["CLOSED", "CANCELLED", "CANCELED", "SHIPPED", "COMPLETE", "COMPLETED"].includes(
+    status,
   );
 }
 

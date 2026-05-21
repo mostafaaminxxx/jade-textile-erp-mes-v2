@@ -1,4 +1,5 @@
-import { CalendarDays, ClipboardList, Route, Rows3 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CalendarDays, ClipboardList, Link2, Route, Rows3 } from "lucide-react";
 import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -24,6 +25,45 @@ export default async function OrdersPlanningPage() {
                 Line assignment is not active yet because line_order_contexts is empty.
               </section>
             ) : null}
+
+            <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-jade-ink">
+                    <Link2 className="h-5 w-5 text-jade-blue" aria-hidden="true" />
+                    <h2 className="text-lg font-bold">Line Assignment Center</h2>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-jade-steel">
+                    Assign real orders to real production lines. No automatic assignments.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[320px]">
+                  <div className="rounded-md border border-slate-100 bg-slate-50 px-4 py-3">
+                    <p className="text-2xl font-black text-jade-ink">
+                      {data.activeLineOrderContexts}
+                    </p>
+                    <p className="text-xs font-bold uppercase text-jade-steel">
+                      Active contexts
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-slate-100 bg-slate-50 px-4 py-3">
+                    <p className="text-2xl font-black text-jade-ink">
+                      {data.waitingLines}
+                    </p>
+                    <p className="text-xs font-bold uppercase text-jade-steel">
+                      Waiting lines
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/app/orders-planning/line-assignment"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-jade-blue px-4 py-3 text-sm font-black text-white transition hover:bg-blue-800"
+                >
+                  Open center
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+            </section>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <KpiCard

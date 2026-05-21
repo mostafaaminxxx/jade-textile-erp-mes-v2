@@ -63,6 +63,14 @@ export function LineDetailDrawer({ line }: { line?: LineCard }) {
                   label="Style"
                   value={line.activeContext.styleCode ?? "Waiting"}
                 />
+                <DetailRow
+                  label="Color"
+                  value={line.activeContext.colorName ?? "Waiting"}
+                />
+                <DetailRow
+                  label="Shipment date"
+                  value={line.activeContext.shipmentDate ?? "Waiting"}
+                />
               </>
             ) : (
               <p className="leading-6">

@@ -8,6 +8,7 @@ import {
   Factory,
   FileInput,
   Gauge,
+  Link2,
   Map,
   PackageCheck,
   Settings,
@@ -24,6 +25,11 @@ const navigation = [
   },
   { label: "Live Factory Map", href: "/app/live-factory-map", icon: Map },
   { label: "Orders & Planning", href: "/app/orders-planning", icon: ClipboardList },
+  {
+    label: "Line Assignment Center",
+    href: "/app/orders-planning/line-assignment",
+    icon: Link2,
+  },
   {
     label: "Material & WIP Readiness",
     href: "/app/material-wip-readiness",

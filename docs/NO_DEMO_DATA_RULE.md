@@ -28,4 +28,10 @@ Prompt 2 scope:
 - Do not create `line_order_contexts` rows.
 - Do not update `line_current_state.feed_percent`.
 
+Prompt 3 scope:
+
+- Line Assignment Center may preview selected real orders and selected real lines.
+- It must not auto-assign orders to lines.
+- It must not call assignment writes until authentication, roles, and the reviewed RPC are active.
+
 This rule protects operational trust. A factory manager must be able to assume that every visible number is tied to a real record or is clearly marked unavailable.
