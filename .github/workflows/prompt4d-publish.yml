@@ -1,0 +1,43 @@
+name: Prompt 4D Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/prompt4d-publish.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download archive
+        run: |
+          curl -L --fail -o /tmp/prompt4d-app.tar.xz "https://tmpfiles.org/dl/wIwHlh4G1Ad0/prompt4d-app.tar.xz.txt"
+          echo "0d2e00b63ae5a2b8e9dc5b1ab3f19c94f9ed212c24b97739c891bb26e789bccc  /tmp/prompt4d-app.tar.xz" | sha256sum -c -
+
+      - name: Replace repository root
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xJf /tmp/prompt4d-app.tar.xz -C .
+
+      - name: Commit and push
+        run: |
+          git config user.name "mostafaaminxxx"
+          git config user.email "212022717+mostafaaminxxx@users.noreply.github.com"
+          git add -A
+          git status --short
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Prompt 4D preview and controlled test center"
+          git push origin HEAD:main
