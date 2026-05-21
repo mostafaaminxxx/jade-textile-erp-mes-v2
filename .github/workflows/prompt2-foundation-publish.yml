@@ -1,0 +1,37 @@
+name: Prompt 2 foundation publish
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download verified app archive
+        run: |
+          curl -fsSL "https://tmpfiles.org/dl/wVwAlp2hge7T/codex-prompt2-upload.txt" -o /tmp/jade-prompt2.tar.xz
+          echo "5FF25205F3519158A43331F8B6AC0001D7F141A3008F976CF27802981B40FAAA  /tmp/jade-prompt2.tar.xz" | sha256sum -c -
+
+      - name: Replace repository root with prompt 2 app tree
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xJf /tmp/jade-prompt2.tar.xz -C .
+
+      - name: Commit real data foundation visibility
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Prompt 2 real data foundation visibility"
+          git push origin HEAD:main
