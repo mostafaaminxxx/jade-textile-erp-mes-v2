@@ -7,6 +7,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 const visualStyles = {
   changeover: "border-orange-300 bg-orange-50 text-orange-900",
   no_feeding: "border-red-300 bg-red-50 text-red-900",
+  quality_hold: "border-amber-300 bg-amber-50 text-amber-900",
   stopped: "border-slate-300 bg-slate-100 text-slate-600",
   running: "border-blue-300 bg-blue-50 text-blue-900",
   waiting: "border-slate-200 bg-white text-slate-700",
@@ -23,17 +24,20 @@ export function MiniLineCard({
     line.status,
     line.feedPercent,
     line.stopReason,
+    line.qualityHold,
   );
   const Icon =
     visual === "changeover"
       ? Cog
       : visual === "no_feeding"
         ? Flag
-        : visual === "running"
-          ? Workflow
-          : visual === "stopped"
-            ? Shirt
-            : Timer;
+        : visual === "quality_hold"
+          ? Flag
+          : visual === "running"
+            ? Workflow
+            : visual === "stopped"
+              ? Shirt
+              : Timer;
 
   return (
     <button
@@ -68,9 +72,15 @@ export function MiniLineCard({
         </div>
       ) : (
         <p className="mt-4 text-xs font-semibold text-slate-500">
-          Waiting for data
+          Waiting
         </p>
       )}
+
+      <p className="mt-3 text-xs font-semibold text-slate-500">
+        {line.activeContext
+          ? line.activeContext.orderCode ?? "Active order context"
+          : "No active order context"}
+      </p>
     </button>
   );
 }

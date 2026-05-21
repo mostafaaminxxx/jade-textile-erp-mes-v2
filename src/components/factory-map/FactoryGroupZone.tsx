@@ -29,7 +29,7 @@ export function FactoryGroupZone({ group }: { group: GroupWithLines }) {
               {group.group_code}
             </h2>
             <p className="text-xs font-semibold uppercase text-jade-steel">
-              {isGhost ? "Ghost / inactive zone" : `${group.lines.length} lines`}
+              {isGhost ? "Ghost / inactive zone" : group.group_name ?? "Active zone"}
             </p>
           </div>
         </div>
@@ -42,14 +42,31 @@ export function FactoryGroupZone({ group }: { group: GroupWithLines }) {
         </Link>
       </div>
 
+      <div className="mb-4 grid grid-cols-3 gap-2 text-xs font-semibold text-jade-steel">
+        <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+          <p className="text-lg font-black text-jade-ink">{group.lines.length}</p>
+          <p>Lines</p>
+        </div>
+        <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+          <p className="text-lg font-black text-jade-ink">{group.waitingLines}</p>
+          <p>Waiting</p>
+        </div>
+        <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+          <p className="text-lg font-black text-jade-ink">
+            {group.activeContextLines}
+          </p>
+          <p>Context</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-        {group.lines.slice(0, 12).map((line) => (
+        {group.lines.map((line) => (
           <MiniLineCard key={line.id} line={line} />
         ))}
       </div>
-      {group.lines.length > 12 ? (
-        <p className="mt-3 text-xs font-semibold text-jade-steel">
-          {group.lines.length - 12} more lines in group view
+      {group.lines.length === 0 ? (
+        <p className="rounded-md border border-dashed border-slate-200 bg-white px-3 py-4 text-sm font-semibold text-jade-steel">
+          Waiting for real factory data.
         </p>
       ) : null}
     </section>

@@ -16,6 +16,10 @@ const statusStyles: Record<string, string> = {
   RISK: "border-red-300 bg-red-50 text-red-800",
   BLOCKED: "border-red-400 bg-red-100 text-red-900",
   UNKNOWN: "border-slate-300 bg-slate-50 text-slate-700",
+  loaded: "border-blue-300 bg-blue-50 text-blue-800",
+  waiting: "border-orange-300 bg-orange-50 text-orange-900",
+  inactive: "border-slate-300 bg-slate-100 text-slate-600",
+  missing: "border-red-300 bg-red-50 text-red-800",
 };
 
 export function StatusChip({

@@ -1,12 +1,12 @@
 import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
 import { ImportApprovalCenter } from "@/components/factory-map/ImportApprovalCenter";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { getImportBatchSummary } from "@/lib/data/factory";
+import { getReportsImportsData } from "@/lib/data/factory";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsImportsPage() {
-  const summary = await getImportBatchSummary();
+  const summary = await getReportsImportsData();
 
   return (
     <>
