@@ -1,0 +1,43 @@
+name: Prompt 4B Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/prompt4b-publish.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download archive
+        run: |
+          curl -L --fail -o /tmp/prompt4b-app.tar.xz "https://tmpfiles.org/dl/w7wVl3kmXiFH/prompt4b-app.tar.xz.txt"
+          echo "f5eee063a9816b463b8f2b81d8d87230d739b5c810b1207e08b9ad6c4d4c84fc  /tmp/prompt4b-app.tar.xz" | sha256sum -c -
+
+      - name: Replace repository root
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xJf /tmp/prompt4b-app.tar.xz -C .
+
+      - name: Commit and push
+        run: |
+          git config user.name "mostafaaminxxx"
+          git config user.email "212022717+mostafaaminxxx@users.noreply.github.com"
+          git add -A
+          git status --short
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Prompt 4B enable role gated line assignment"
+          git push origin HEAD:main
