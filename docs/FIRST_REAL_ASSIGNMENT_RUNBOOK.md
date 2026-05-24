@@ -1,77 +1,110 @@
 # First Real Assignment Runbook
 
-Purpose: guide the first real ADMIN profile setup and one controlled line-order assignment test for Jade Textile ERP/MES V2.
+## 1. Purpose
 
-Status before starting: `profiles_total = 0`, `line_order_contexts = 0`, `line_current_state_with_context = 0`, and `line_current_state_with_feed_percent = 0`.
+This is the first controlled test to prove that one real order can be assigned to one real production line without starting production, without changing feed percent, and without creating fake operational data.
 
-This is an operational test workflow. It must not create fake users, fake profiles, fake line contexts, fake production, fake downtime, fake feed values, or fake line status.
+This runbook is for human-run auth/profile setup and one controlled assignment test only. It must not create fake users, fake profiles, fake line contexts, fake production, fake downtime, fake feed values, or fake line status.
 
-## 1. Local Env Setup
+## 2. Pre-Test Conditions
 
-Create a local `.env.local` file in the app root. Do not commit it.
+Expected before the test:
 
-Add only the public frontend variables:
+| Check | Expected value |
+| --- | ---: |
+| `profiles_total` | `0` or `1`, depending on whether the first admin profile has already been created |
+| `line_order_contexts` | `0` |
+| `line_current_state_with_context` | `0` |
+| `line_current_state_with_feed_percent` | `0` |
+
+If line contexts, line current contexts, or feed percent rows already exist, stop and review the database state before running the first assignment test.
+
+## 3. Local Environment Setup
+
+Create `.env.local` locally only. Never commit it.
+
+Required variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+For the Jade Textile ERP/MES V2 Supabase project, the URL is:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://siqystsijkjrqsdrokdh.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=REPLACE_WITH_REAL_SUPABASE_ANON_KEY
 ```
 
-Never add `SUPABASE_SERVICE_ROLE_KEY` to frontend env files. Never use a service role key in `.env.local` for this Next.js browser app.
+Add the real anon key locally. Do not paste it into docs, GitHub, chat, screenshots, or committed files.
 
-Restart the dev server after saving `.env.local`:
+Warning:
+- Never add `SUPABASE_SERVICE_ROLE_KEY`.
+- Never use a service role key in frontend code.
+- Never commit `.env.local`.
+
+## 4. Start Local App
+
+Start the app:
 
 ```powershell
 npm run dev
 ```
 
-Open the app locally and confirm the Supabase connection-required warning is gone.
+Use these routes during the test:
 
-## 2. Sign Up Real User
+- `/login`
+- `/app/settings-admin/preview-test-center`
+- `/app/orders-planning/line-assignment`
+- `/app/live-factory-map`
+
+After starting the app with `.env.local` configured, confirm the Supabase connection-required warning is gone.
+
+## 5. Create Real Auth User
 
 1. Open `/login`.
 2. Sign up with a real email and password.
 3. Wait for the Profile Status Panel to show the signed-in user.
 4. Copy the `Auth user id` from the Profile Status Panel.
+5. Confirm the profile row shows missing at first.
 
-Expected state immediately after signup:
+Expected immediately after signup:
 - Auth user exists.
-- Profile row is still missing.
+- Profile row is missing.
 - Assignment permission is `No`.
-- No profile has been created automatically.
+- The app has not created an admin profile automatically.
 
-## 3. Create First Admin Profile
+## 6. Create First Admin Profile Manually
+
+Use `supabase/manual/001_create_first_admin_profile.sql`.
 
 1. Open `/app/settings-admin/preview-test-center`.
-2. Copy the first-admin SQL template from the page or from `supabase/manual/001_create_first_admin_profile.sql`.
-3. Replace `REPLACE_WITH_AUTH_USER_ID` with the real auth user id copied from the Profile Status Panel.
+2. Copy the first-admin SQL template from Preview & Test Center or the local file.
+3. Replace `REPLACE_WITH_AUTH_USER_ID` with the real auth user id.
 4. Run the SQL manually in Supabase SQL Editor.
 5. Refresh the app.
 
-Confirm in the Profile Status Panel:
+Verify in Profile Status Panel:
 - `Profile row = Exists`
 - `Role = ADMIN`
 - `Active = Active`
 - `Assignment permission = Yes`
 
-Confirm in Settings/Admin or Preview & Test Center:
-- `profiles_total = 1`
-- `active_profiles = 1`
-- `assignment_allowed_profiles = 1`
+Stop if the app creates a profile automatically. Profiles must be created manually for this first setup.
 
-Stop if the app creates a profile automatically. That would be a bug.
+## 7. Choose Controlled Test Target
 
-## 4. Select Controlled Test Target
-
-Pick one safe real line:
-- Prefer `line_status = WAITING_FOR_DATA`.
-- Prefer `current_context_id is null`.
-- Do not choose a special line.
-- Do not choose a ghost or inactive group.
-- Do not choose an inactive line.
+Line selection rules:
+- Choose a real active line.
+- Avoid `G-11`.
+- Avoid inactive groups.
+- Avoid ghost groups.
+- Avoid special lines.
+- Choose a line with no active context.
+- Choose a line with `WAITING_FOR_DATA`.
 - Record `line_id` and `line_code`.
 
-Suggested SQL to find candidate lines:
+Optional SQL to find candidate lines:
 
 ```sql
 select
@@ -94,18 +127,20 @@ where pl.is_active = true
   and coalesce(pl.is_special, false) = false
   and coalesce(pg.is_active, true) = true
   and coalesce(pg.is_ghost, false) = false
+  and pg.group_code <> 'G-11'
   and lcs.line_status = 'WAITING_FOR_DATA'
   and lcs.current_context_id is null
 order by pg.display_order, pl.line_code
 limit 50;
 ```
 
-Pick one real order:
-- Prefer material readiness not `BLOCKED`.
-- Prefer a simple nearest shipment order.
+Order selection rules:
+- Choose a real order.
+- Avoid obviously blocked material if possible.
+- Prefer a simple/customer-known order.
 - Record `order_id`, `order_code`, customer, style, color, and shipment date.
 
-Suggested SQL to find candidate orders:
+Optional SQL to find candidate orders:
 
 ```sql
 select
@@ -131,16 +166,16 @@ order by o.shipment_date nulls last, o.order_code
 limit 50;
 ```
 
-If WIP readiness is only available at customer/sewing-type/sub-type level, treat it as a planning hint only. Do not treat it as line-specific feed data.
+WIP readiness may exist at customer/sewing-type/sub-type level. Treat it as a planning hint only unless a real line-order context links it to the selected line.
 
-## 5. Before Assignment Baseline SQL
+## 8. Baseline SQL Before Assignment
 
-Before clicking the assignment button, run this SQL in Supabase SQL Editor and save the output.
+Run this SQL in Supabase SQL Editor before clicking assignment. Save the output.
 
 Replace `REPLACE_WITH_LINE_ID` with the selected real line id.
 
 ```sql
-select count(*) as line_order_contexts_before
+select count(*)::int as line_order_contexts_before
 from public.line_order_contexts;
 
 select
@@ -149,58 +184,54 @@ select
   line_status,
   feed_percent,
   feed_cover_days,
-  last_refreshed_at,
-  updated_at
+  actual_today,
+  target_today,
+  last_refreshed_at
 from public.line_current_state
 where line_id = 'REPLACE_WITH_LINE_ID';
 
-select
-  count(*) as active_contexts_for_selected_line_before
+select count(*)::int as active_contexts_for_selected_line_before
 from public.line_order_contexts
 where line_id = 'REPLACE_WITH_LINE_ID'
   and is_active = true;
 ```
 
-Expected baseline for the current first test:
+Expected baseline:
 - `line_order_contexts_before = 0`
-- `current_context_id is null`
-- `line_status = WAITING_FOR_DATA`
-- `feed_percent is null`
-- `feed_cover_days is null`
+- selected `current_context_id is null`
+- selected `line_status = WAITING_FOR_DATA`
+- selected `feed_percent is null`
+- selected `feed_cover_days is null`
+- selected `actual_today` is unchanged before/after the test
+- selected `target_today` is unchanged before/after the test
 - `active_contexts_for_selected_line_before = 0`
 
-Stop if the selected line already has an active context.
-
-## 6. Perform Assignment In App
+## 9. Perform Assignment In App
 
 1. Open `/app/orders-planning/line-assignment`.
-2. Select the recorded real line.
-3. Select the recorded real order.
-4. Review the assignment preview warnings.
-5. Click `Create assignment`.
-6. In the confirmation dialog, set change reason to:
+2. Select the chosen real line.
+3. Select the chosen real order.
+4. Open the confirmation dialog.
+5. Set reason to:
 
 ```text
 Controlled first assignment test
 ```
 
-7. Leave optional SMV, planned operators, and planned target per day blank unless real values are known.
-8. Click `Confirm assignment`.
-9. Record the returned context id from the success message.
+6. Leave SMV, operators, and target blank unless real values are known.
+7. Confirm assignment once only.
+8. Record the returned context id.
 
-The assignment creates a line context only. It must not start production, mark the line running, create downtime, update `feed_percent`, or update `feed_cover_days`.
+The assignment must only create the line-order context. It must not start production, update feed percent, update feed cover days, create downtime, or mark the line running.
 
-## 7. After Assignment Verification SQL
+## 10. Verification SQL After Assignment
 
 Replace:
+- `REPLACE_WITH_CONTEXT_ID` with the returned context id.
 - `REPLACE_WITH_LINE_ID` with the selected line id.
-- `REPLACE_WITH_CONTEXT_ID` with the context id returned by the app.
-- `REPLACE_WITH_BASELINE_CONTEXT_COUNT` with the saved `line_order_contexts_before` value.
 
 ```sql
-select
-  count(*) as line_order_contexts_after,
-  count(*) - REPLACE_WITH_BASELINE_CONTEXT_COUNT as context_count_delta
+select count(*)::int as line_order_contexts_after
 from public.line_order_contexts;
 
 select
@@ -234,19 +265,19 @@ select
   line_status,
   feed_percent,
   feed_cover_days,
+  actual_today,
+  target_today,
   last_refreshed_at,
   updated_at
 from public.line_current_state
 where line_id = 'REPLACE_WITH_LINE_ID';
 
-select
-  count(*) as active_contexts_for_selected_line_after
+select count(*)::int as active_contexts_for_selected_line_after
 from public.line_order_contexts
 where line_id = 'REPLACE_WITH_LINE_ID'
   and is_active = true;
 
 select
-  id,
   table_name,
   record_id,
   action,
@@ -258,110 +289,82 @@ select
 from public.audit_logs
 where table_name = 'line_order_contexts'
   and record_id = 'REPLACE_WITH_CONTEXT_ID'
-  and action = 'LINE_ORDER_CONTEXT_ASSIGNED'
 order by changed_at desc;
 ```
 
-Expected verification:
-- `context_count_delta = 1`
-- The new context id exists.
-- The new context has `is_active = true`.
-- The new context uses real order/customer/style/color/shipment fields.
-- The selected line has `current_context_id = REPLACE_WITH_CONTEXT_ID`.
+Compare `line_order_contexts_after` to the saved `line_order_contexts_before`.
+
+## 11. Expected Results
+
+Must be true:
+- `line_order_contexts` increased by exactly `1`.
+- selected `line_current_state.current_context_id = new context id`.
 - Exactly one active context exists for the selected line.
-- `line_status` remains `WAITING_FOR_DATA` unless it already had a protected real status.
-- `feed_percent` remains unchanged or null.
-- `feed_cover_days` remains unchanged or null.
-- `audit_logs` contains one `LINE_ORDER_CONTEXT_ASSIGNED` row for the new context.
+- `line_status` remains `WAITING_FOR_DATA` unless it had a protected status before assignment.
+- `feed_percent` remains null or unchanged.
+- `feed_cover_days` remains null or unchanged.
+- `actual_today` remains unchanged.
+- `target_today` remains unchanged.
+- Audit log exists.
+- No other line is updated.
 
-## 8. UI Verification
+## 12. UI Verification
 
-Refresh the app after the assignment.
+Check:
+- Live Factory Map selected line shows active context.
+- Group view selected line shows active context.
+- Line Detail Drawer shows real PO/style/color/shipment/context data.
+- Line is not shown as `RUNNING` unless it was already real `RUNNING`.
+- Feed bar does not appear unless `feed_percent` is real.
+- No fake customer/order/style appears elsewhere.
 
-Verify:
-- Live Factory Map selected line shows an active context indicator.
-- Group view selected line shows the active context.
-- Line Detail Drawer shows the real order/context fields.
-- Line Detail Drawer shows PO, style, color, shipment date, SMV/operators/target only when real values exist.
-- Line status is not shown as `RUNNING` unless the real database status says `RUNNING`.
-- No fake customer, PO, style, feed value, production, or downtime appears.
+## 13. Rollback If Needed
 
-## 9. Rollback If Needed
+Use `supabase/manual/002_rollback_controlled_assignment_test.sql`.
 
-Use `supabase/manual/002_rollback_controlled_assignment_test.sql` only if the controlled test assignment must be closed.
+Instructions:
+1. Replace `REPLACE_WITH_CONTEXT_ID`.
+2. Replace `REPLACE_WITH_LINE_ID`.
+3. Run manually in Supabase SQL Editor.
 
-1. Replace `REPLACE_WITH_CONTEXT_ID` with the real context id.
-2. Replace `REPLACE_WITH_LINE_ID` with the selected line id.
-3. Run the SQL manually in Supabase SQL Editor.
+Verify rollback:
+- selected context `is_active = false`.
+- `context_end_at is not null`.
+- selected line `current_context_id` is cleared only if it matched that context.
+- `line_status` unchanged.
+- `feed_percent` unchanged.
+- `feed_cover_days` unchanged.
 
-Then verify:
+## 14. Stop Criteria
 
-```sql
-select
-  id,
-  line_id,
-  is_active,
-  context_end_at,
-  updated_at
-from public.line_order_contexts
-where id = 'REPLACE_WITH_CONTEXT_ID';
-
-select
-  line_id,
-  current_context_id,
-  line_status,
-  feed_percent,
-  feed_cover_days,
-  updated_at
-from public.line_current_state
-where line_id = 'REPLACE_WITH_LINE_ID';
-```
-
-Expected rollback:
-- The selected context has `is_active = false`.
-- The selected context has `context_end_at` populated.
-- The selected line has `current_context_id is null`.
-- `line_status` is unchanged.
-- `feed_percent` is unchanged or null.
-- `feed_cover_days` is unchanged or null.
-
-## 10. Success Criteria
-
-The controlled test succeeds only if all of these are true:
-- One context was created only.
-- One selected line was updated only.
-- The assignment was created by a signed-in user with ADMIN, MANAGER, or PLANNING profile role.
-- No feed fields changed.
-- No line was marked running automatically.
-- No fake operational data appeared.
-- UI reload shows the real context on the selected line.
-- The rollback template is available if the test context must be closed.
-
-## 11. Stop Criteria
-
-Stop immediately and report the result if any of these happen:
-- Assignment button enables without a signed-in user.
-- Assignment button enables without a profile.
-- Assignment works without ADMIN, MANAGER, or PLANNING role.
+Stop immediately if:
+- Assignment button enables without signed-in user.
+- Assignment button enables without ADMIN/MANAGER/PLANNING profile.
+- Assignment succeeds without role.
 - `feed_percent` changes.
 - `feed_cover_days` changes.
 - `line_status` becomes `RUNNING` automatically.
-- Multiple contexts are created.
-- The wrong line is updated.
-- A service role key appears anywhere in frontend code, `.env.local`, browser output, or committed files.
-- The app creates a profile automatically.
+- More than one context is created.
+- Wrong line is updated.
+- Service role key appears anywhere.
+- Fake data appears.
 
-## 12. What To Record For Prompt 4G
+## 15. Pass/Fail Checklist
 
-After the human test, record:
-- Auth user id.
-- Profile id and role.
-- Selected line id and line code.
-- Selected order id and order code.
-- Baseline context count.
-- New context id.
-- After-assignment verification SQL output.
-- Whether rollback was run.
-- Any UI mismatch found in Live Factory Map, Group View, or Line Detail Drawer.
+| Check | Pass/Fail | Notes |
+| --- | --- | --- |
+| Auth user created |  |  |
+| Admin profile created |  |  |
+| Assignment permission yes |  |  |
+| Selected line recorded |  |  |
+| Selected order recorded |  |  |
+| Baseline SQL captured |  |  |
+| Assignment created once |  |  |
+| Context id recorded |  |  |
+| Post SQL verified |  |  |
+| Live Map verified |  |  |
+| Line Detail verified |  |  |
+| Feed protected |  |  |
+| Rollback performed if needed |  |  |
 
-Do not record passwords, anon keys, service role keys, or other secrets.
+Do not record passwords, anon keys, service role keys, or other secrets in this checklist.

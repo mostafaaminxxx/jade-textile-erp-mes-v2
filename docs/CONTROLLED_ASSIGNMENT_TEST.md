@@ -2,6 +2,8 @@
 
 Use this guide only after a real Supabase Auth user exists and a real profile role has been assigned. Do not create fake users, fake profiles, fake line contexts, or fake production data.
 
+For the full first-run procedure, use `docs/FIRST_REAL_ASSIGNMENT_RUNBOOK.md`.
+
 ## Steps
 
 1. Configure `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.

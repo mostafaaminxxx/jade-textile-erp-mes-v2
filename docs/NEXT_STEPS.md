@@ -16,18 +16,23 @@ Current status:
 
 Recommended next build sequence:
 
-1. Create first real assignment-ready profile
+1. Execute the first real assignment runbook
+   - Follow `docs/FIRST_REAL_ASSIGNMENT_RUNBOOK.md`.
+   - Configure local `.env.local` without committing it.
    - Sign up or sign in from `/login`.
    - Open `/app/settings-admin/preview-test-center`.
    - Copy the auth user id from the profile status panel.
    - Run `supabase/manual/001_create_first_admin_profile.sql` manually after replacing the placeholder id.
-
-2. Validate first real line assignment
    - Sign in with an authenticated `ADMIN`, `MANAGER`, or `PLANNING` profile.
    - Review readiness in Preview & Test Center.
    - Select one real line and one real order in Line Assignment Center.
    - Confirm that the created context appears after reload without changing feed percent or line running status.
-   - Follow `docs/CONTROLLED_ASSIGNMENT_TEST.md`.
+   - Capture the runbook baseline and verification SQL outputs.
+
+2. Review the first assignment result
+   - Confirm one context was created for one selected line only.
+   - Confirm `feed_percent`, `feed_cover_days`, `actual_today`, and `target_today` did not change.
+   - Confirm Live Factory Map, Group View, and Line Detail Drawer show the real context.
 
 3. Downtime workflow
    - Add downtime schema/workflow only after roles and line contexts are active.
