@@ -11,7 +11,7 @@ export function FactoryGroupZone({ group }: { group: GroupWithLines }) {
     <section
       className={cn(
         "rounded-lg border bg-white p-4 shadow-sm",
-        isGhost ? "border-dashed border-slate-300 bg-slate-50 opacity-70" : "borde-jade-line",
+        isGhost ? "border-dashed border-slate-300 bg-slate-50 opacity-70" : "border-jade-line",
       )}
     >
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -65,7 +65,7 @@ export function FactoryGroupZone({ group }: { group: GroupWithLines }) {
         ))}
       </div>
       {group.lines.length === 0 ? (
-        <p className="rounded-md border-dashed border-slate-200 bg-white px-3 py-4 text-sm font-semibold text-jade-steel">
+        <p className="rounded-md border border-dashed border-slate-200 bg-white px-3 py-4 text-sm font-semibold text-jade-steel">
           Waiting for real factory data.
         </p>
       ) : null}
