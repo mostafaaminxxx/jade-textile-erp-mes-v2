@@ -56,6 +56,18 @@ http://127.0.0.1:3001/login
 
 See `docs/LOCAL_PREVIEW_TROUBLESHOOTING.md` for Windows and Supabase connection troubleshooting.
 
+## Vercel Deployment
+
+If local Windows Node/npm is blocked, deploy the app through Vercel from GitHub.
+
+Use:
+
+```text
+docs/VERCEL_DEPLOYMENT_GUIDE.md
+```
+
+The Vercel build command is `npm run build`. Add only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in Vercel. Never add a service role key to frontend environment variables.
+
 Validate:
 
 ```bash
