@@ -177,6 +177,30 @@ The RPC is designed to:
 
 The frontend does not call this RPC yet.
 
+## Final Pre-Apply Hardening
+
+- `start_production_execution` locks the selected `line_current_state` row before validating `current_context_id` and `line_status`.
+- `audit_logs` is treated as an optional compatibility audit only.
+- The RPC checks that `audit_logs` exists and has the expected columns before inserting audit data.
+- If `audit_logs` is missing, its schema has drifted, or the optional audit insert fails, the RPC raises a notice and continues because `production_execution_events` is the mandatory execution event log.
+- The RPC still does not write fake feed, actual, or target values.
+- `feed_percent`, `feed_cover_days`, `actual_today`, and `target_today` remain untouched by start production.
+
+## Apply Safety
+
+Applying migration 012 creates schema only.
+
+It does not:
+
+- start production
+- mark H8 or any line `RUNNING`
+- insert production execution sessions or events
+- update `line_current_state` rows
+- update `feed_percent`
+- update `feed_cover_days`
+- update `actual_today`
+- update `target_today`
+
 ## RLS Design
 
 Review-only RLS plan:
@@ -215,6 +239,8 @@ drop table if exists public.production_execution_sessions;
 ```
 
 If any production execution data exists, do not drop tables blindly. Export/review the rows first and decide whether to close sessions, preserve audit history, or create a corrective migration.
+
+Rollback is safe only before production sessions/events exist. After real production starts, do not drop execution tables without export, review, and explicit approval.
 
 ## Safety Rules
 

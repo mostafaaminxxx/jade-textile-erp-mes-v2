@@ -8,6 +8,15 @@
 -- Frontend writes remain disabled.
 -- Concurrency safety: start_production_execution locks line_current_state before inserting an execution session.
 --
+-- PRE-APPLY CHECKLIST:
+-- 1. Confirm this migration is being applied manually by an admin.
+-- 2. Confirm frontend Start Production button is still disabled.
+-- 3. Confirm H8 is WAITING_FOR_DATA before apply.
+-- 4. Confirm line_current_state feed_percent/feed_cover_days are not touched by this migration.
+-- 5. Confirm production_execution_sessions/events tables do not already exist unless this is an idempotent re-run.
+-- 6. Confirm no downtime workflow is expected from this migration.
+-- 7. Confirm rollback plan is understood before apply.
+--
 -- Safety model:
 -- - Assigning a line-order context does not start production.
 -- - Starting production, when later approved, creates a real execution session.
@@ -237,6 +246,11 @@ using (true);
 -- Future writes must go through controlled RPC only.
 -- Do not weaken line_order_contexts or line_current_state policies.
 
+-- SECURITY DEFINER SAFETY:
+-- - This function is intentionally a controlled RPC for a future production start workflow.
+-- - It must not be called from the frontend until this migration has been applied and reviewed.
+-- - Frontend Start Production remains disabled in the current phase.
+-- - Direct table write policies are intentionally not created; writes must go through controlled RPC only.
 create or replace function public.start_production_execution(
   p_line_id uuid,
   p_context_id uuid,
@@ -256,6 +270,7 @@ declare
   v_context record;
   v_session_id uuid;
   v_old_status text;
+  v_audit_columns_ready boolean := false;
 begin
   if v_user_id is null then
     raise exception 'Authentication required.';
@@ -329,7 +344,7 @@ begin
     and loc.line_id = p_line_id
     and loc.is_active = true;
 
-  if v_context.id is null then
+  if not found then
     raise exception 'Active line context not found.';
   end if;
 
@@ -417,37 +432,71 @@ begin
     updated_at = now()
   where line_id = p_line_id;
 
+  -- audit_logs is optional compatibility audit. production_execution_events is the mandatory execution event log.
   if to_regclass('public.audit_logs') is not null then
-    insert into public.audit_logs (
-      table_name,
-      record_id,
-      action,
-      old_data,
-      new_data,
-      changed_by,
-      changed_at,
-      reason
+    select not exists (
+      select 1
+      from unnest(array[
+        'table_name',
+        'record_id',
+        'action',
+        'old_data',
+        'new_data',
+        'changed_by',
+        'changed_at',
+        'reason'
+      ]::text[]) as required_cols(required_column)
+      where not exists (
+        select 1
+        from information_schema.columns c
+        where c.table_schema = 'public'
+          and c.table_name = 'audit_logs'
+          and c.column_name = required_cols.required_column
+      )
     )
-    values (
-      'production_execution_sessions',
-      v_session_id,
-      'START_PRODUCTION',
-      jsonb_build_object(
-        'line_id', p_line_id,
-        'context_id', p_context_id,
-        'line_status', v_old_status
-      ),
-      jsonb_build_object(
-        'session_id', v_session_id,
-        'line_id', p_line_id,
-        'context_id', p_context_id,
-        'order_id', v_context.order_id,
-        'line_status', 'RUNNING'
-      ),
-      v_user_id,
-      now(),
-      p_reason
-    );
+    into v_audit_columns_ready;
+  else
+    raise notice 'Skipping optional audit_logs insert because audit_logs table does not exist.';
+  end if;
+
+  if v_audit_columns_ready then
+    begin
+      insert into public.audit_logs (
+        table_name,
+        record_id,
+        action,
+        old_data,
+        new_data,
+        changed_by,
+        changed_at,
+        reason
+      )
+      values (
+        'production_execution_sessions',
+        v_session_id,
+        'START_PRODUCTION',
+        jsonb_build_object(
+          'line_id', p_line_id,
+          'context_id', p_context_id,
+          'line_status', v_old_status
+        ),
+        jsonb_build_object(
+          'session_id', v_session_id,
+          'line_id', p_line_id,
+          'context_id', p_context_id,
+          'order_id', v_context.order_id,
+          'line_status', 'RUNNING'
+        ),
+        v_user_id,
+        now(),
+        p_reason
+      );
+    exception
+      when others then
+        raise notice 'Skipping optional audit_logs insert because audit logging failed: %', sqlerrm;
+    end;
+  elsif to_regclass('public.audit_logs') is not null then
+    raise notice 'Skipping optional audit_logs insert because required audit_logs columns are missing.';
   end if;
 
   return v_session_id;
@@ -459,3 +508,31 @@ grant execute on function public.start_production_execution(uuid, uuid, text) to
 
 comment on function public.start_production_execution(uuid, uuid, text)
 is 'Review-only future RPC. Frontend is disconnected until manual migration approval and controlled testing.';
+
+-- POST-APPLY VERIFICATION:
+-- select to_regclass('public.production_execution_sessions') is not null as sessions_exists;
+-- select to_regclass('public.production_execution_events') is not null as events_exists;
+-- select count(*) from public.production_execution_sessions;
+-- select count(*) from public.production_execution_events;
+-- select * from public.production_execution_readiness_view where line_code = 'H8';
+-- Confirm H8 shows READY_TO_START before RPC testing.
+-- Confirm no line was changed to RUNNING by applying the migration alone.
+-- Confirm feed_percent/feed_cover_days remained unchanged.
+
+-- ROLLBACK PLAN - ONLY IF NO PRODUCTION EXECUTION DATA EXISTS
+-- Pre-check:
+-- select count(*) from public.production_execution_sessions;
+-- select count(*) from public.production_execution_events;
+--
+-- If both are zero, rollback can be:
+-- drop function if exists public.start_production_execution(uuid, uuid, text);
+-- drop view if exists public.production_execution_readiness_view;
+-- drop policy if exists "authenticated can read production execution events" on public.production_execution_events;
+-- drop policy if exists "authenticated can read production execution sessions" on public.production_execution_sessions;
+-- drop table if exists public.production_execution_events;
+-- drop table if exists public.production_execution_sessions;
+--
+-- If rows exist:
+-- Do NOT drop tables.
+-- Export/audit data first.
+-- Use controlled close-session workflow later.
