@@ -15,18 +15,25 @@ Current status:
 - First controlled line assignment test passed.
 - One real line-order context exists for `H8` / `G-1`.
 - `H8` remains `WAITING_FOR_DATA` and has no feed percent or feed cover days.
+- Prompt 5B adds a reusable Line Detail Drawer / Context Review surface for Live Factory Map, Group View, and Line Assignment Center.
+- The drawer is read-only and separates operational status, assignment status, and execution status.
+- Prompt 5C adds the production execution state machine foundation.
+- Production start remains disabled until the migration/RPC is manually reviewed, applied, and tested.
+- Prompt 5D replaces migration 012 with the full review-only production execution database foundation.
+- Migration 012 must not be applied until manual review is complete.
 
 Recommended next build sequence:
 
-1. Prompt 5B option A: Line Detail Drawer and Context Review polish
-   - Improve active context review surfaces.
-   - Make context fields easier to inspect for supervisors and planners.
-   - Keep all writes disabled except the existing assignment flow.
+1. Prompt 5E: Manual review of migration 012 before Supabase apply
+   - Manually review `supabase/migrations/012_production_execution_state_machine_foundation.sql`.
+   - Confirm table definitions, readiness view, future RPC, and RLS plan.
+   - Apply only after explicit approval.
+   - Verify `production_execution_readiness_view` before enabling any frontend write.
 
-2. Prompt 5B option B: Start Production Execution state machine foundation
-   - Define allowed future state transitions.
-   - Prepare review-only SQL/RPC design.
-   - Do not enable production or downtime writes until reviewed.
+2. Prompt 5E option B: Assignment close/change workflow design
+   - Prepare a controlled close/change assignment design.
+   - Keep direct overwrite blocked.
+   - Require explicit user-selected context changes and audit logging.
 
 3. Downtime workflow
    - Add downtime schema/workflow only after roles and line contexts are active.
@@ -38,9 +45,3 @@ Recommended next build sequence:
 
 5. Broader auth and roles
    - Extend supervisor, production, quality, warehouse, maintenance, manager, and admin gates before enabling more writes.
-
-## Prompt 5C status
-
-Prompt 5C adds the read-only Production Execution readiness foundation.
-
-Production start remains disabled. The next recommended step is to preview `/app/production-execution`, confirm H8 appears as ready to start, and only then decide whether to build the reviewed SQL/RPC migration in a controlled step.
