@@ -126,7 +126,7 @@ left join public.customers c on c.id = o.customer_id
 left join public.style_master sm on sm.id = o.style_id
 left join public.material_readiness mr on mr.order_id = o.id
 where coalesce(o.order_status, '') not in ('CLOSED', 'CANCELLED')
-  and coalesce(mr.readiness_status, '') <> 'BLOCKED'
+  and (mr.readiness_status is null or mr.readiness_status::text <> 'BLOCKED')
 order by o.shipment_date nulls last, o.order_code
 limit 50;
 ```
