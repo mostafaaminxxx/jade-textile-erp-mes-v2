@@ -23,7 +23,7 @@ export default function LiveFactoryMapPage() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <KpiCard label="Groups represented" value={data.summary.groupCount} helper="G-1 through G-15" />
               <KpiCard label="Real production lines" value={data.summary.lineCount} helper="All lines from production_lines" />
-              <KpiCard label="Waiting lines" value={data.summary.waitingLineCount} helper="From line_current_state" />
+              <KpiCard label="Waiting status lines" value={data.summary.waitingLineCount} helper="Operational status from line_current_state" />
               <KpiCard label="Active contexts" value={data.summary.activeContextCount} helper="From line_order_contexts" />
             </div>
             <LiveFactoryMapCanvas groupZones={data.groupZones} />

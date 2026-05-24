@@ -1,84 +1,101 @@
-import type { ReactNode } from "react";
-import type { LineCard } from "@/types/factory";
-import { StatusChip } from "@/components/ui/StatusChip";
+"use client";
 
-export function LineDetailDrawer({ line }: { line?: LineCard }) {
+import type { ReactNode } from "react";
+import { X } from "lucide-react";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { cn } from "@/lib/utils";
+import type { ActiveLineContext, LineCard } from "@/types/factory";
+
+export function LineDetailDrawer({
+  line,
+  onClose,
+}: {
+  line?: LineCard | null;
+  onClose: () => void;
+}) {
+  if (!line) {
+    return null;
+  }
+
+  const assignmentStatus = getAssignmentStatus(line);
+  const executionStatus = getExecutionStatus(line);
+
   return (
-    <aside className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-jade-ink">Line detail</h2>
-      {line ? (
-        <div className="mt-4 space-y-5 text-sm text-jade-steel">
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/35">
+      <button
+        type="button"
+        aria-label="Close line detail"
+        className="hidden flex-1 cursor-default md:block"
+        onClick={onClose}
+      />
+      <aside className="h-full w-full max-w-2xl overflow-y-auto border-l border-jade-line bg-white shadow-2xl">
+        <header className="sticky top-0 z-10 border-b border-jade-line bg-white px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase text-jade-orange">
+                Line detail / context review
+              </p>
+              <h2 className="mt-1 truncate text-2xl font-black text-jade-ink">
+                {line.lineCode}
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-jade-steel">
+                {[line.groupCode, line.garmentType].filter(Boolean).join(" / ")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-jade-line text-jade-steel transition hover:text-jade-ink"
+              aria-label="Close line detail"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <StatusChip status={line.status} />
+            <AssignmentBadge status={assignmentStatus} />
+            <ExecutionBadge status={executionStatus} />
+          </div>
+        </header>
+
+        <div className="space-y-5 px-5 py-5">
+          <StatusExplanation
+            line={line}
+            assignmentStatus={assignmentStatus}
+            executionStatus={executionStatus}
+          />
+
           <Section title="Line Identity">
             <DetailRow label="Line code" value={line.lineCode} strong />
             <DetailRow label="Group" value={line.groupCode ?? "Unassigned group"} />
-            <DetailRow label="Garment type" value={line.garmentType} />
+            <DetailRow label="Group name" value={line.groupName ?? "Waiting"} />
+            <DetailRow label="Line type" value={line.garmentType} />
             <DetailRow label="Active" value={line.isActive ? "Active" : "Inactive"} />
             <DetailRow
               label="Special line"
               value={line.isSpecial ? "Special line" : "Standard line"}
             />
-          </Section>
-
-          <Section title="Current State">
-            <div className="mb-2">
-              <StatusChip status={line.status} />
-            </div>
-            <DetailRow label="Stop reason" value={line.stopReason ?? "None reported"} />
             <DetailRow
-              label="Feed percent"
-              value={line.feedPercent === null ? "Waiting" : `${line.feedPercent}%`}
-            />
-            <DetailRow
-              label="Feed cover days"
-              value={
-                line.feedCoverDays === null ? "Waiting" : String(line.feedCoverDays)
-              }
-            />
-            <DetailRow
-              label="Quality hold"
-              value={line.qualityHold ? "Quality hold" : "No quality hold"}
-            />
-            <DetailRow
-              label="Shipment risk"
-              value={line.shipmentRisk ?? "None reported"}
-            />
-            <DetailRow
-              label="Last refreshed"
-              value={line.lastRefreshedAt ?? "Waiting"}
+              label="Operational status"
+              value={line.status.replaceAll("_", " ")}
             />
           </Section>
 
-          <Section title="Active Order Context">
+          <Section title="Active Context">
+            {line.activeContext ? (
+              <ActiveContextDetails context={line.activeContext} />
+            ) : (
+              <p className="text-sm font-semibold leading-6 text-jade-steel">
+                No active order context. This line is available for planning assignment.
+              </p>
+            )}
+          </Section>
+
+          <Section title="Planning Data">
             {line.activeContext ? (
               <>
-                <DetailRow
-                  label="Order"
-                  value={line.activeContext.orderCode ?? "Assigned context"}
-                />
-                <DetailRow
-                  label="PO"
-                  value={line.activeContext.poNumber ?? "Waiting"}
-                />
-                <DetailRow
-                  label="Customer"
-                  value={line.activeContext.customerName ?? "Waiting"}
-                />
-                <DetailRow
-                  label="Style"
-                  value={line.activeContext.styleCode ?? "Waiting"}
-                />
-                <DetailRow
-                  label="Color"
-                  value={line.activeContext.colorName ?? "Waiting"}
-                />
-                <DetailRow
-                  label="Shipment date"
-                  value={line.activeContext.shipmentDate ?? "Waiting"}
-                />
-                <DetailRow
-                  label="SMV"
-                  value={formatNumber(line.activeContext.smv)}
-                />
+                <DetailRow label="SMV" value={formatNumber(line.activeContext.smv)} />
                 <DetailRow
                   label="Planned operators"
                   value={formatNumber(line.activeContext.plannedOperators)}
@@ -87,53 +104,142 @@ export function LineDetailDrawer({ line }: { line?: LineCard }) {
                   label="Planned target per day"
                   value={formatNumber(line.activeContext.plannedTargetPerDay)}
                 />
+                <DetailRow
+                  label="Shipment date"
+                  value={line.activeContext.shipmentDate ?? "Waiting for planning values"}
+                />
               </>
             ) : (
-              <p className="leading-6">
-                No active order context assigned yet. Planning must assign a real
-                order to this line before line-level production/feed/shipment data
-                appears.
+              <p className="text-sm font-semibold leading-6 text-jade-steel">
+                Waiting for a real planning assignment.
               </p>
             )}
           </Section>
 
-          <Section title="Material / WIP Link">
-            <p className="leading-6">
+          <Section title="Material / WIP Readiness Snapshot">
+            <p className="text-sm font-semibold leading-6 text-jade-steel">
               {line.activeContext
-                ? "Material and WIP summaries can be interpreted through the assigned order context."
-                : "Material and WIP data exists at order/customer/sewing-type level, but this line is not linked to an order yet."}
+                ? "Readiness is available at order/customer/style level. It is not pushed to line execution yet."
+                : "Readiness is available at order/customer/style level, not pushed to line execution yet."}
             </p>
           </Section>
 
-          <Section title="Allowed Future Actions">
-            <p className="leading-6">
-              Production entry will be enabled after auth and role setup.
-              Downtime entry will be enabled after downtime schema/workflow setup.
+          <Section title="Execution Safety">
+            <DetailRow label="Feed percent" value={formatExecutionValue(line.feedPercent, "%")} />
+            <DetailRow label="Feed cover days" value={formatExecutionValue(line.feedCoverDays)} />
+            <DetailRow label="Stop reason" value={line.stopReason ?? "None reported"} />
+            <DetailRow
+              label="Quality hold"
+              value={line.qualityHold ? "Quality hold" : "No quality hold"}
+            />
+            <DetailRow label="Shipment risk" value={line.shipmentRisk ?? "None reported"} />
+            <DetailRow label="Last refreshed" value={line.lastRefreshedAt ?? "Waiting"} />
+            <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold leading-6 text-jade-steel">
+              {line.feedPercent === null
+                ? "Not started / no execution feed yet."
+                : "Execution feed is present from real line current state data."}
             </p>
           </Section>
+
+          <section className="rounded-lg border border-orange-100 bg-orange-50 p-4 text-sm font-semibold leading-6 text-orange-900">
+            Assignment does not start production, does not change feed %, and does not mark the line running.
+          </section>
+
+          <Section title="Read-Only Future Actions">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {["Start production", "Close / change assignment", "Register downtime", "Add production entry"].map(
+                (label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled
+                    title="Coming in a controlled workflow phase."
+                    className="min-h-11 rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-black text-slate-500"
+                  >
+                    {label}
+                    <span className="mt-1 block text-xs font-semibold">
+                      Coming in a controlled workflow phase.
+                    </span>
+                  </button>
+                ),
+              )}
+            </div>
+          </Section>
         </div>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-jade-steel">
-          Select a line to inspect current state. No floor actions are enabled in
-          this foundation visibility phase.
-        </p>
-      )}
-    </aside>
+      </aside>
+    </div>
   );
 }
 
-function Section({
-  title,
-  children,
+function StatusExplanation({
+  line,
+  assignmentStatus,
+  executionStatus,
 }: {
-  title: string;
-  children: ReactNode;
+  line: LineCard;
+  assignmentStatus: AssignmentStatus;
+  executionStatus: ExecutionStatus;
 }) {
   return (
-    <section>
-      <h3 className="mb-2 text-xs font-black uppercase text-jade-ink">{title}</h3>
+    <section className="grid gap-3 md:grid-cols-3">
+      <ExplanationCard
+        label="Operational status"
+        value={line.status.replaceAll("_", " ")}
+        detail="Current state from line_current_state."
+      />
+      <ExplanationCard
+        label="Assignment status"
+        value={assignmentStatus}
+        detail="Whether a real line_order_context is active."
+      />
+      <ExplanationCard
+        label="Execution status"
+        value={executionStatus}
+        detail="Production execution is not started by assignment."
+      />
+    </section>
+  );
+}
+
+function ActiveContextDetails({ context }: { context: ActiveLineContext }) {
+  return (
+    <>
+      <DetailRow label="Context id" value={context.id} strong />
+      <DetailRow label="Order" value={context.orderCode ?? "Assigned context"} />
+      <DetailRow label="PO" value={context.poNumber ?? "Waiting"} />
+      <DetailRow label="Customer" value={context.customerName ?? "Waiting"} />
+      <DetailRow label="Style" value={context.styleCode ?? "Waiting"} />
+      <DetailRow label="Color" value={context.colorName ?? "Waiting"} />
+      <DetailRow label="Shipment date" value={context.shipmentDate ?? "Waiting"} />
+      <DetailRow label="Context start" value={context.contextStartAt ?? "Waiting"} />
+    </>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-jade-line bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-xs font-black uppercase text-jade-ink">{title}</h3>
       <div className="space-y-2">{children}</div>
     </section>
+  );
+}
+
+function ExplanationCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="text-xs font-black uppercase text-jade-steel">{label}</p>
+      <p className="mt-2 text-sm font-black text-jade-ink">{value}</p>
+      <p className="mt-1 text-xs font-semibold leading-5 text-jade-steel">{detail}</p>
+    </div>
   );
 }
 
@@ -147,15 +253,90 @@ function DetailRow({
   strong?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span>{label}</span>
-      <span className={strong ? "font-black text-jade-ink" : "font-semibold text-jade-ink"}>
+    <div className="flex items-start justify-between gap-4 text-sm">
+      <span className="text-jade-steel">{label}</span>
+      <span
+        className={cn(
+          "max-w-[65%] break-words text-right font-semibold text-jade-ink",
+          strong && "font-black",
+        )}
+      >
         {value}
       </span>
     </div>
   );
 }
 
+type AssignmentStatus = "Assigned" | "Available" | "Not assignable";
+type ExecutionStatus = "Not started" | "Waiting for execution data" | "Running" | "Stopped";
+
+function getAssignmentStatus(line: LineCard): AssignmentStatus {
+  if (line.activeContext) {
+    return "Assigned";
+  }
+
+  if (!line.isActive || line.isSpecial || line.groupCode === "G-11") {
+    return "Not assignable";
+  }
+
+  return "Available";
+}
+
+function getExecutionStatus(line: LineCard): ExecutionStatus {
+  if (!line.activeContext) {
+    return "Not started";
+  }
+
+  if (line.status === "RUNNING") {
+    return "Running";
+  }
+
+  if (["STOPPED", "CHANGEOVER", "QUALITY_HOLD", "NO_FEEDING"].includes(line.status)) {
+    return "Stopped";
+  }
+
+  return "Waiting for execution data";
+}
+
+function AssignmentBadge({ status }: { status: AssignmentStatus }) {
+  const className =
+    status === "Assigned"
+      ? "border-blue-200 bg-blue-50 text-blue-800"
+      : status === "Available"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+        : "border-slate-200 bg-slate-100 text-slate-600";
+
+  return <Badge className={className}>{status}</Badge>;
+}
+
+function ExecutionBadge({ status }: { status: ExecutionStatus }) {
+  const className =
+    status === "Running"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : status === "Stopped"
+        ? "border-red-200 bg-red-50 text-red-800"
+        : "border-slate-200 bg-slate-50 text-slate-700";
+
+  return <Badge className={className}>{status}</Badge>;
+}
+
+function Badge({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-h-6 items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase leading-none",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 function formatNumber(value: number | null) {
-  return value === null ? "Waiting" : String(value);
+  return value === null ? "Waiting for planning values" : String(value);
+}
+
+function formatExecutionValue(value: number | null, suffix = "") {
+  return value === null ? "Not started / no execution feed yet" : `${value}${suffix}`;
 }

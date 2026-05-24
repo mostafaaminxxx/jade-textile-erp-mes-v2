@@ -7,9 +7,8 @@ import { LineDetailDrawer } from "@/components/factory-map/LineDetailDrawer";
 import { StatusChip } from "@/components/ui/StatusChip";
 
 export function GroupView({ data }: { data: GroupDetailData }) {
-  const { group, lines, statusDistribution, waitingLineCount, activeContextLineCount } =
-    data;
-  const [selectedLine, setSelectedLine] = useState<LineCard | undefined>();
+  const { group, lines, statusDistribution, waitingLineCount, activeContextLineCount } = data;
+  const [selectedLine, setSelectedLine] = useState<LineCard | null>(null);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
@@ -36,10 +35,7 @@ export function GroupView({ data }: { data: GroupDetailData }) {
 
         <div className="mb-5 flex flex-wrap gap-2">
           {statusDistribution.map((item) => (
-            <div
-              key={item.status}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-jade-steel"
-            >
+            <div key={item.status} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-jade-steel">
               <StatusChip status={item.status} />
               <span>{item.count}</span>
             </div>
@@ -48,16 +44,12 @@ export function GroupView({ data }: { data: GroupDetailData }) {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {lines.map((line) => (
-            <MiniLineCard
-              key={line.id}
-              line={line}
-              onClick={() => setSelectedLine(line)}
-            />
+            <MiniLineCard key={line.id} line={line} onClick={() => setSelectedLine(line)} />
           ))}
         </div>
       </section>
 
-      <LineDetailDrawer line={selectedLine} />
+      <LineDetailDrawer line={selectedLine} onClose={() => setSelectedLine(null)} />
     </div>
   );
 }
