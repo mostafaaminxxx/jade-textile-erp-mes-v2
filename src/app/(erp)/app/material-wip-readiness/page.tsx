@@ -1,15 +1,13 @@
+"use client";
+
 import { Boxes, PackageOpen, Shirt } from "lucide-react";
-import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
+import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { getMaterialWipReadinessData } from "@/lib/data/factory";
 
-export const dynamic = "force-dynamic";
-
-export default async function MaterialWipReadinessPage() {
-  const summary = await getMaterialWipReadinessData();
-
+export default function MaterialWipReadinessPage() {
   return (
     <>
       <SectionHeader
@@ -18,7 +16,10 @@ export default async function MaterialWipReadinessPage() {
         description="Real summaries from material_readiness, wip_readiness, fabric_stock_items, and cut_panel_wip. WIP feed data is not pushed to line cards until real line-order contexts exist."
       />
 
-      <DataConnectionGate result={summary}>
+      <AuthenticatedDataGate
+        queryName="material and WIP readiness"
+        load={getMaterialWipReadinessData}
+      >
         {(data) => (
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -82,7 +83,7 @@ export default async function MaterialWipReadinessPage() {
             </section>
           </div>
         )}
-      </DataConnectionGate>
+      </AuthenticatedDataGate>
     </>
   );
 }

@@ -1,13 +1,11 @@
-import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
+"use client";
+
+import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { SupervisorMobileHome } from "@/components/factory-map/SupervisorMobileHome";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { getFactoryGroups, getLineCards } from "@/lib/data/factory";
 
-export const dynamic = "force-dynamic";
-
-export default async function ProductionExecutionPage() {
-  const [groups, lines] = await Promise.all([getFactoryGroups(), getLineCards()]);
-
+export default function ProductionExecutionPage() {
   return (
     <>
       <SectionHeader
@@ -15,15 +13,15 @@ export default async function ProductionExecutionPage() {
         title="Supervisor shell"
         description="Read-only production execution shell for current line state. Floor writes are intentionally disabled until auth, roles, and approvals are active."
       />
-      <DataConnectionGate result={groups}>
+      <AuthenticatedDataGate queryName="production groups" load={getFactoryGroups}>
         {(groupData) => (
-          <DataConnectionGate result={lines}>
+          <AuthenticatedDataGate queryName="line cards" load={getLineCards}>
             {(lineData) => (
               <SupervisorMobileHome groups={groupData} lines={lineData} />
             )}
-          </DataConnectionGate>
+          </AuthenticatedDataGate>
         )}
-      </DataConnectionGate>
+      </AuthenticatedDataGate>
     </>
   );
 }

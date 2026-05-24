@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Boxes,
   ClipboardList,
@@ -9,17 +11,13 @@ import {
   PackageOpen,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
+import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { getExecutiveCommandCenterData } from "@/lib/data/factory";
 
-export const dynamic = "force-dynamic";
-
-export default async function ExecutiveCommandCenterPage() {
-  const summary = await getExecutiveCommandCenterData();
-
+export default function ExecutiveCommandCenterPage() {
   return (
     <>
       <SectionHeader
@@ -27,7 +25,10 @@ export default async function ExecutiveCommandCenterPage() {
         title="Real database foundation"
         description="Real counts from Supabase only. Efficiency, production quantity, risk score, and downtime are intentionally withheld until those operational feeds are activated."
       />
-      <DataConnectionGate result={summary}>
+      <AuthenticatedDataGate
+        queryName="executive command center"
+        load={getExecutiveCommandCenterData}
+      >
         {(data) => (
           <div className="space-y-6">
             <SummarySection title="Factory Structure">
@@ -81,7 +82,7 @@ export default async function ExecutiveCommandCenterPage() {
             </section>
           </div>
         )}
-      </DataConnectionGate>
+      </AuthenticatedDataGate>
     </>
   );
 }

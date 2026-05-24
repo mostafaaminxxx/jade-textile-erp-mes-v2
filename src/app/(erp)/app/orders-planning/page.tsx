@@ -1,15 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, CalendarDays, ClipboardList, Link2, Route, Rows3 } from "lucide-react";
-import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
+import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { getOrdersPlanningData } from "@/lib/data/factory";
 
-export const dynamic = "force-dynamic";
-
-export default async function OrdersPlanningPage() {
-  const summary = await getOrdersPlanningData();
-
+export default function OrdersPlanningPage() {
   return (
     <>
       <SectionHeader
@@ -17,7 +15,10 @@ export default async function OrdersPlanningPage() {
         title="Orders and planning foundation"
         description="This page summarizes real order, production plan, daily quantity, and routing records. No scheduling board is invented in the first shell."
       />
-      <DataConnectionGate result={summary}>
+      <AuthenticatedDataGate
+        queryName="orders planning foundation"
+        load={getOrdersPlanningData}
+      >
         {(data) => (
           <div className="space-y-6">
             {data.lineOrderContexts === 0 ? (
@@ -155,7 +156,7 @@ export default async function OrdersPlanningPage() {
             </section>
           </div>
         )}
-      </DataConnectionGate>
+      </AuthenticatedDataGate>
     </>
   );
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,7 +13,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { ProfileStatusPanel } from "@/components/auth/ProfileStatusPanel";
-import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
+import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
 import {
@@ -19,15 +21,7 @@ import {
   getDatabaseReadinessChecklist,
 } from "@/lib/data/factory";
 
-export const dynamic = "force-dynamic";
-
-export default async function SettingsAdminPage() {
-  const [checklist, profileReadiness] = await Promise.all([
-    getDatabaseReadinessChecklist(),
-    getAuthProfileReadinessData(),
-  ]);
-  const environment = process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local";
-
+export default function SettingsAdminPage() {
   return (
     <>
       <SectionHeader
@@ -36,7 +30,10 @@ export default async function SettingsAdminPage() {
         description="Operational setup status for the V2 shell. Service role keys must stay backend/admin only and are never shown in frontend code."
       />
 
-      <DataConnectionGate result={checklist}>
+      <AuthenticatedDataGate
+        queryName="settings database readiness"
+        load={getDatabaseReadinessChecklist}
+      >
         {(data) => (
           <div className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -63,7 +60,7 @@ export default async function SettingsAdminPage() {
                 />
                 <StatusRow
                   label="Environment"
-                  value={environment}
+                  value="browser session"
                   ok
                   icon={<ServerCog className="h-4 w-4" aria-hidden="true" />}
                 />
@@ -102,7 +99,10 @@ export default async function SettingsAdminPage() {
               <p className="mt-1 text-sm font-semibold text-jade-steel">
                 Assignment writes require a real signed-in user with an active profile role.
               </p>
-              <DataConnectionGate result={profileReadiness}>
+              <AuthenticatedDataGate
+                queryName="auth profile readiness"
+                load={getAuthProfileReadinessData}
+              >
                 {(profileData) => (
                   <div className="mt-5 space-y-5">
                     {profileData.profilesTotal === 0 ? (
@@ -127,7 +127,7 @@ export default async function SettingsAdminPage() {
                     <ProfileStatusPanel compact />
                   </div>
                 )}
-              </DataConnectionGate>
+              </AuthenticatedDataGate>
             </section>
 
             <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
@@ -156,7 +156,7 @@ export default async function SettingsAdminPage() {
             </section>
           </div>
         )}
-      </DataConnectionGate>
+      </AuthenticatedDataGate>
     </>
   );
 }

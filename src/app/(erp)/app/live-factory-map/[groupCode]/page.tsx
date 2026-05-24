@@ -1,18 +1,19 @@
+"use client";
+
+import { useCallback } from "react";
+import { useParams } from "next/navigation";
 import { GroupView } from "@/components/factory-map/GroupView";
-import { DataConnectionGate } from "@/components/layout/DataConnectionGate";
+import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { getGroupDetailData } from "@/lib/data/factory";
 
-export const dynamic = "force-dynamic";
-
-export default async function LiveFactoryGroupPage({
-  params,
-}: {
-  params: Promise<{ groupCode: string }>;
-}) {
-  const { groupCode } = await params;
-  const decodedGroupCode = decodeURIComponent(groupCode);
-  const group = await getGroupDetailData(decodedGroupCode);
+export default function LiveFactoryGroupPage() {
+  const params = useParams<{ groupCode: string }>();
+  const decodedGroupCode = decodeURIComponent(params.groupCode);
+  const loadGroupData = useCallback(
+    () => getGroupDetailData(decodedGroupCode),
+    [decodedGroupCode],
+  );
 
   return (
     <>
@@ -21,9 +22,12 @@ export default async function LiveFactoryGroupPage({
         title={`Group ${decodedGroupCode}`}
         description="Group view shows real production lines and the current line state from Supabase."
       />
-      <DataConnectionGate result={group}>
+      <AuthenticatedDataGate
+        queryName={`factory group ${decodedGroupCode}`}
+        load={loadGroupData}
+      >
         {(data) => <GroupView data={data} />}
-      </DataConnectionGate>
+      </AuthenticatedDataGate>
     </>
   );
 }
