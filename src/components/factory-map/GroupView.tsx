@@ -30,8 +30,8 @@ export function GroupView({ data }: { data: GroupDetailData }) {
 
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <SummaryStat label="Lines" value={lines.length} />
-          <SummaryStat label="Waiting for data" value={waitingLineCount} />
-          <SummaryStat label="Active order contexts" value={activeContextLineCount} />
+          <SummaryStat label="Waiting status lines" value={waitingLineCount} />
+          <SummaryStat label="Assigned lines" value={activeContextLineCount} />
         </div>
 
         <div className="mb-5 flex flex-wrap gap-2">

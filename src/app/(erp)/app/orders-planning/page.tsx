@@ -52,7 +52,7 @@ export default function OrdersPlanningPage() {
                       {data.waitingLines}
                     </p>
                     <p className="text-xs font-bold uppercase text-jade-steel">
-                      Waiting lines
+                      Waiting status lines
                     </p>
                   </div>
                 </div>

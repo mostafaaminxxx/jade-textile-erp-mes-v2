@@ -12,27 +12,21 @@ Current status:
 - First admin/planning profile must be created manually after a real signup.
 - Preview & Test Center exists at `/app/settings-admin/preview-test-center`.
 - Manual first admin and rollback SQL templates are visible in app for copy/reference only.
-- No line contexts have been created yet.
+- First controlled line assignment test passed.
+- One real line-order context exists for `H8` / `G-1`.
+- `H8` remains `WAITING_FOR_DATA` and has no feed percent or feed cover days.
 
 Recommended next build sequence:
 
-1. Execute the first real assignment runbook
-   - Follow `docs/FIRST_REAL_ASSIGNMENT_RUNBOOK.md`.
-   - Configure local `.env.local` without committing it.
-   - Sign up or sign in from `/login`.
-   - Open `/app/settings-admin/preview-test-center`.
-   - Copy the auth user id from the profile status panel.
-   - Run `supabase/manual/001_create_first_admin_profile.sql` manually after replacing the placeholder id.
-   - Sign in with an authenticated `ADMIN`, `MANAGER`, or `PLANNING` profile.
-   - Review readiness in Preview & Test Center.
-   - Select one real line and one real order in Line Assignment Center.
-   - Confirm that the created context appears after reload without changing feed percent or line running status.
-   - Capture the runbook baseline and verification SQL outputs.
+1. Prompt 5B option A: Line Detail Drawer and Context Review polish
+   - Improve active context review surfaces.
+   - Make context fields easier to inspect for supervisors and planners.
+   - Keep all writes disabled except the existing assignment flow.
 
-2. Review the first assignment result
-   - Confirm one context was created for one selected line only.
-   - Confirm `feed_percent`, `feed_cover_days`, `actual_today`, and `target_today` did not change.
-   - Confirm Live Factory Map, Group View, and Line Detail Drawer show the real context.
+2. Prompt 5B option B: Start Production Execution state machine foundation
+   - Define allowed future state transitions.
+   - Prepare review-only SQL/RPC design.
+   - Do not enable production or downtime writes until reviewed.
 
 3. Downtime workflow
    - Add downtime schema/workflow only after roles and line contexts are active.

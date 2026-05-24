@@ -6,6 +6,27 @@ This is the first controlled test to prove that one real order can be assigned t
 
 This runbook is for human-run auth/profile setup and one controlled assignment test only. It must not create fake users, fake profiles, fake line contexts, fake production, fake downtime, fake feed values, or fake line status.
 
+## First Test Result
+
+The first controlled assignment test passed.
+
+Recorded real assignment:
+
+| Field | Value |
+| --- | --- |
+| `context_id` | `a287ba5b-3e97-469a-ba41-d2e64e99f285` |
+| line | `H8` |
+| group | `G-1` |
+| order | `YSESH0884 FW26 P00-SH0884-FW26-57I ARAL==YESIM` |
+| style | `SH0884` |
+| color | `57I ARAL` |
+| shipment | `2026-04-10` |
+| line status after assignment | `WAITING_FOR_DATA` |
+| feed percent after assignment | `null` |
+| feed cover days after assignment | `null` |
+
+`H8` is no longer available for assignment while this context remains active. Future assignment tests must choose a line with no active context.
+
 ## 2. Pre-Test Conditions
 
 Expected before the test:
@@ -13,11 +34,11 @@ Expected before the test:
 | Check | Expected value |
 | --- | ---: |
 | `profiles_total` | `0` or `1`, depending on whether the first admin profile has already been created |
-| `line_order_contexts` | `0` |
-| `line_current_state_with_context` | `0` |
+| `line_order_contexts` | `0` before the first test; currently `1` after the passed first test |
+| `line_current_state_with_context` | `0` before the first test; currently `1` after the passed first test |
 | `line_current_state_with_feed_percent` | `0` |
 
-If line contexts, line current contexts, or feed percent rows already exist, stop and review the database state before running the first assignment test.
+If unexpected line contexts, line current contexts, or feed percent rows exist, stop and review the database state before running another assignment test. The known passed first-test context is `a287ba5b-3e97-469a-ba41-d2e64e99f285` for `H8`.
 
 ## 3. Local Environment Setup
 
@@ -103,6 +124,7 @@ Line selection rules:
 - Choose a line with no active context.
 - Choose a line with `WAITING_FOR_DATA`.
 - Record `line_id` and `line_code`.
+- Do not reuse `H8` while context `a287ba5b-3e97-469a-ba41-d2e64e99f285` remains active.
 
 Optional SQL to find candidate lines:
 

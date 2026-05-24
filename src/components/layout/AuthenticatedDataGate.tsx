@@ -67,9 +67,11 @@ export function AuthenticatedDataGate<T>({
     }
 
     void loadData();
+    window.addEventListener("jade:refresh-real-data", loadData);
 
     return () => {
       isActive = false;
+      window.removeEventListener("jade:refresh-real-data", loadData);
     };
   }, [load, queryName]);
 

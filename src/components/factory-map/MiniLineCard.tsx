@@ -70,17 +70,34 @@ export function MiniLineCard({
           </div>
           <p className="mt-1 text-xs font-semibold">{line.feedPercent}% feed</p>
         </div>
+      ) : line.activeContext ? (
+        <p className="mt-4 text-xs font-semibold text-slate-600">
+          Assigned, waiting for execution data
+        </p>
       ) : (
         <p className="mt-4 text-xs font-semibold text-slate-500">
           Waiting
         </p>
       )}
 
-      <p className="mt-3 text-xs font-semibold text-slate-500">
-        {line.activeContext
-          ? `Active context: ${line.activeContext.orderCode ?? line.activeContext.poNumber ?? "assigned"}`
-          : "No active order context"}
-      </p>
+      {line.activeContext ? (
+        <div className="mt-3 space-y-1 text-xs font-semibold text-slate-600">
+          <p className="text-slate-800">Active context</p>
+          <p>{line.activeContext.orderCode ?? line.activeContext.poNumber ?? "Assigned order"}</p>
+          <p>
+            {[line.activeContext.styleCode, line.activeContext.colorName]
+              .filter(Boolean)
+              .join(" / ") || "Style waiting"}
+          </p>
+          {line.activeContext.shipmentDate ? (
+            <p>{line.activeContext.shipmentDate}</p>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs font-semibold text-slate-500">
+          No active order context
+        </p>
+      )}
     </button>
   );
 }
