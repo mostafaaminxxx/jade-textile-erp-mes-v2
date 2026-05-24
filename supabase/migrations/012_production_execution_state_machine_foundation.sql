@@ -6,6 +6,7 @@
 -- Does not change existing line status.
 -- Does not create fake feed values.
 -- Frontend writes remain disabled.
+-- Concurrency safety: start_production_execution locks line_current_state before inserting an execution session.
 --
 -- Safety model:
 -- - Assigning a line-order context does not start production.
@@ -251,6 +252,7 @@ declare
   v_role public.user_role;
   v_profile_active boolean;
   v_line record;
+  v_state record;
   v_context record;
   v_session_id uuid;
   v_old_status text;
@@ -278,20 +280,28 @@ begin
     coalesce(pl.is_special, false) as is_special,
     pg.is_active as group_is_active,
     coalesce(pg.is_ghost, false) as group_is_ghost,
-    pg.group_code,
-    lcs.current_context_id,
-    lcs.line_status::text as line_status
+    pg.group_code
   into v_line
   from public.production_lines pl
   left join public.production_groups pg
     on pg.id = pl.group_id
-  left join public.line_current_state lcs
-    on lcs.line_id = pl.id
-  where pl.id = p_line_id
-  for update of pl;
+  where pl.id = p_line_id;
 
-  if v_line.id is null then
+  if not found then
     raise exception 'Production line not found.';
+  end if;
+
+  select
+    lcs.line_id,
+    lcs.current_context_id,
+    lcs.line_status::text as line_status
+  into v_state
+  from public.line_current_state lcs
+  where lcs.line_id = p_line_id
+  for update;
+
+  if not found then
+    raise exception 'Line current state not found.';
   end if;
 
   if v_line.is_active is not true then
@@ -308,7 +318,7 @@ begin
     raise exception 'Ghost or inactive line group cannot start production.';
   end if;
 
-  if v_line.current_context_id is distinct from p_context_id then
+  if v_state.current_context_id is distinct from p_context_id then
     raise exception 'Selected context is not the current line context.';
   end if;
 
@@ -323,7 +333,7 @@ begin
     raise exception 'Active line context not found.';
   end if;
 
-  if v_line.line_status <> 'WAITING_FOR_DATA' then
+  if v_state.line_status <> 'WAITING_FOR_DATA' then
     raise exception 'Line must be WAITING_FOR_DATA before production start.';
   end if;
 
@@ -345,7 +355,7 @@ begin
     raise exception 'Context already has an active production execution session.';
   end if;
 
-  v_old_status := v_line.line_status;
+  v_old_status := v_state.line_status;
 
   insert into public.production_execution_sessions (
     line_id,

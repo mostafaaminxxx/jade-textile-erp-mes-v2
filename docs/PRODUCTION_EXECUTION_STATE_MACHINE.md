@@ -159,6 +159,11 @@ The RPC requires:
 - no active production execution session exists for the context
 - current `line_status = WAITING_FOR_DATA`
 
+Concurrency safety:
+
+- the RPC must lock `line_current_state` for the selected line before validating `current_context_id` and `line_status`
+- this prevents two users from starting the same line at the same time
+
 The RPC is designed to:
 
 - insert `production_execution_sessions`
