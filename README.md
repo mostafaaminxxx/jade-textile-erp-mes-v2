@@ -36,6 +36,26 @@ Run locally:
 npm run dev
 ```
 
+Open the login page:
+
+```text
+http://127.0.0.1:3000/login
+```
+
+If port `3000` is busy:
+
+```bash
+npm run dev:3001
+```
+
+Then open:
+
+```text
+http://127.0.0.1:3001/login
+```
+
+See `docs/LOCAL_PREVIEW_TROUBLESHOOTING.md` for Windows and Supabase connection troubleshooting.
+
 Validate:
 
 ```bash
