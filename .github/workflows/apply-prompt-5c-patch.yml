@@ -1,0 +1,65 @@
+name: Apply Prompt 5B-5C Patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prompt-5b-5c-combined.patch
+      - .github/workflows/apply-prompt-5c-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-prompt-5c-patch:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Check patch file exists
+        run: |
+          test -f prompt-5b-5c-combined.patch
+
+      - name: Apply patch safely
+        run: |
+          set -euo pipefail
+          if git apply --check --whitespace=nowarn prompt-5b-5c-combined.patch; then
+            git apply --whitespace=nowarn prompt-5b-5c-combined.patch
+          elif git apply --3way --whitespace=nowarn prompt-5b-5c-combined.patch; then
+            echo "Patch applied with 3-way merge."
+          else
+            echo "3-way apply failed; trying patch -N for already-applied hunks."
+            patch -p1 -N --batch < prompt-5b-5c-combined.patch
+            if find . -name '*.rej' -print -quit | grep -q .; then
+              echo "Patch produced reject files. Failing for manual review."
+              find . -name '*.rej' -print
+              exit 1
+            fi
+          fi
+
+      - name: Install and validate
+        run: |
+          npm install
+          npm run typecheck
+          npm run lint
+          npm run build
+
+      - name: Commit patched files
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f prompt-5b-5c-combined.patch .github/workflows/apply-prompt-5c-patch.yml
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No patch changes to commit."
+            exit 0
+          fi
+          git commit -m "Prompt 5C production execution state machine foundation"
+          git push origin main
