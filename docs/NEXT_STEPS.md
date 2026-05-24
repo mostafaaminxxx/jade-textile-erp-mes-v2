@@ -38,3 +38,9 @@ Recommended next build sequence:
 
 5. Broader auth and roles
    - Extend supervisor, production, quality, warehouse, maintenance, manager, and admin gates before enabling more writes.
+
+## Prompt 5C status
+
+Prompt 5C adds the read-only Production Execution readiness foundation.
+
+Production start remains disabled. The next recommended step is to preview `/app/production-execution`, confirm H8 appears as ready to start, and only then decide whether to build the reviewed SQL/RPC migration in a controlled step.
