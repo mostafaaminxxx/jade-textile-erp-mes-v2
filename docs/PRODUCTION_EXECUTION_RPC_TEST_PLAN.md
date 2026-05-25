@@ -153,6 +153,8 @@ Final state:
 
 Prompt 5F adds a read-only Production Session Review and Execution History UI.
 
+The Vercel build hardening patch keeps this section as a simple read-only placeholder using readiness/schema counts. Full stored session/event cards should be reintroduced only after deployment stability is confirmed.
+
 Because Prompt 5E-6 used Option A strict cleanup rollback, the history UI should show:
 
 - `production_execution_sessions = 0`

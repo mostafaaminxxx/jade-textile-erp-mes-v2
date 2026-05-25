@@ -32,6 +32,7 @@ Current status:
 - H8 was not touched and remains protected.
 - T20 remains assigned and `READY_TO_START` for future controlled testing.
 - Prompt 5F adds read-only production session review and execution history UI.
+- The Vercel build hardening patch keeps the history area as a simple read-only placeholder using readiness/schema counts.
 - Start Production remains disabled and no frontend execution write path exists.
 
 Recommended next build sequence:
@@ -43,7 +44,7 @@ Recommended next build sequence:
    - Do not touch H8.
 
 2. Prompt 5F-2: Improve history/audit evidence before enabling writes
-   - Show sessions/events history.
+   - Reintroduce full sessions/events history cards after Vercel build stability is confirmed.
    - Show documentation evidence for the strict-cleaned T20 backend RPC test.
    - Consider a future audit-preserving backend test if management wants database history retained.
    - Keep operational writes disabled until review passes.

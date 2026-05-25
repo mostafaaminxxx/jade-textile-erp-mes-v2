@@ -1,53 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { AlertTriangle, Clock3, History, LockKeyhole, PlayCircle } from "lucide-react";
+import { AlertTriangle, History, LockKeyhole, PlayCircle } from "lucide-react";
 import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { getProductionExecutionHistoryData } from "@/lib/data/production-execution-history";
 import {
   getProductionExecutionReadinessData,
-  type ProductionExecutionReadinessData,
   type ProductionExecutionReadinessLine,
 } from "@/lib/data/production-execution-readiness";
-import type {
-  FactoryDataResult,
-  ProductionExecutionEventReview,
-  ProductionExecutionHistoryData,
-  ProductionExecutionSessionReview,
-} from "@/types/factory";
-
-type ProductionExecutionPageData = {
-  readiness: ProductionExecutionReadinessData;
-  history: ProductionExecutionHistoryData;
-};
-
-async function getProductionExecutionPageData(): Promise<
-  FactoryDataResult<ProductionExecutionPageData>
-> {
-  const [readinessResult, historyResult] = await Promise.all([
-    getProductionExecutionReadinessData(),
-    getProductionExecutionHistoryData(),
-  ]);
-
-  if (readinessResult.status !== "success") {
-    return readinessResult;
-  }
-
-  if (historyResult.status !== "success") {
-    return historyResult;
-  }
-
-  return {
-    status: "success",
-    data: {
-      readiness: readinessResult.data,
-      history: historyResult.data,
-    },
-  };
-}
 
 export default function ProductionExecutionPage() {
   return (
@@ -58,10 +19,10 @@ export default function ProductionExecutionPage() {
         description="Read-only production execution foundation. Start, downtime, quality, and feed workflows are prepared for review but remain disabled."
       />
       <AuthenticatedDataGate
-        queryName="production execution readiness and history"
-        load={getProductionExecutionPageData}
+        queryName="production execution readiness"
+        load={getProductionExecutionReadinessData}
       >
-        {({ readiness, history }) => (
+        {(readiness) => (
           <div className="space-y-6">
             <section className="rounded-lg border border-orange-100 bg-orange-50 p-5 text-sm font-semibold leading-6 text-orange-950">
               Production start is disabled in this phase. No line can be marked
@@ -123,11 +84,11 @@ export default function ProductionExecutionPage() {
               </div>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <KpiCard label="Total sessions" value={history.summary.totalSessions} helper="Stored execution sessions" />
-                <KpiCard label="Active sessions" value={history.summary.activeSessions} helper="Sessions without end time" />
-                <KpiCard label="Closed sessions" value={history.summary.closedSessions} helper="Ended execution sessions" />
-                <KpiCard label="Total events" value={history.summary.totalEvents} helper="Execution event log rows" />
-                <KpiCard label="Latest event" value={formatDate(history.summary.latestEventAt) ?? "None"} helper="Newest event timestamp" />
+                <KpiCard label="Total sessions" value={readiness.schemaStatus.sessionsCount} helper="Stored execution sessions" />
+                <KpiCard label="Active sessions" value={readiness.summary.runningSessions} helper="Sessions without end time" />
+                <KpiCard label="Closed sessions" value={0} helper="No closed sessions stored yet" />
+                <KpiCard label="Total events" value={readiness.schemaStatus.eventsCount} helper="Execution event log rows" />
+                <KpiCard label="Latest event" value="None" helper="No stored event timestamp" />
               </div>
 
               <section className="mt-6 rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm font-semibold leading-6 text-blue-950">
@@ -135,31 +96,14 @@ export default function ProductionExecutionPage() {
               </section>
 
               <div className="mt-6 grid gap-5 xl:grid-cols-2">
-                <HistoryPanel
+                <HistoryEmptyPanel
                   title="Stored sessions"
-                  emptyMessage="No production execution sessions are currently stored. The previous T20 backend-only test was strict-cleaned, so this is expected."
-                >
-                  {history.sessions.length > 0 ? (
-                    <div className="space-y-3">
-                      {history.sessions.map((session) => (
-                        <SessionReviewCard key={session.id} session={session} />
-                      ))}
-                    </div>
-                  ) : null}
-                </HistoryPanel>
-
-                <HistoryPanel
+                  message="No production execution sessions are currently stored. The previous T20 backend-only test was strict-cleaned, so this is expected."
+                />
+                <HistoryEmptyPanel
                   title="Event timeline"
-                  emptyMessage="No production execution events are currently stored. Future backend/frontend starts will appear here."
-                >
-                  {history.events.length > 0 ? (
-                    <div className="space-y-3">
-                      {history.events.map((event) => (
-                        <EventReviewCard key={event.id} event={event} />
-                      ))}
-                    </div>
-                  ) : null}
-                </HistoryPanel>
+                  message="No production execution events are currently stored. Future backend/frontend starts will appear here."
+                />
               </div>
 
               <section className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-jade-steel">
@@ -207,9 +151,10 @@ export default function ProductionExecutionPage() {
             </section>
 
             <section className="rounded-lg border border-blue-100 bg-blue-50 p-5 text-sm font-semibold leading-6 text-blue-950">
-              {[...readiness.warnings, ...history.warnings].map((warning) => (
+              {readiness.warnings.map((warning) => (
                 <p key={warning}>{warning}</p>
               ))}
+              <p>History is read-only. This page does not start, stop, close, or edit production sessions.</p>
             </section>
           </div>
         )}
@@ -218,94 +163,25 @@ export default function ProductionExecutionPage() {
   );
 }
 
-function HistoryPanel({
+function HistoryEmptyPanel({
   title,
-  emptyMessage,
-  children,
+  message,
 }: {
   title: string;
-  emptyMessage: string;
-  children: ReactNode;
+  message: string;
 }) {
-  const isEmpty = children === null;
-
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-center gap-2">
-        <Clock3 className="h-4 w-4 text-jade-blue" aria-hidden="true" />
+        <History className="h-4 w-4 text-jade-blue" aria-hidden="true" />
         <h3 className="text-base font-black text-jade-ink">{title}</h3>
       </div>
       <div className="mt-4">
-        {isEmpty ? (
-          <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm font-semibold leading-6 text-jade-steel">
-            {emptyMessage}
-          </p>
-        ) : (
-          children
-        )}
+        <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm font-semibold leading-6 text-jade-steel">
+          {message}
+        </p>
       </div>
     </section>
-  );
-}
-
-function SessionReviewCard({
-  session,
-}: {
-  session: ProductionExecutionSessionReview;
-}) {
-  return (
-    <article className="rounded-md border border-slate-200 bg-slate-50 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-black text-jade-ink">
-            {session.lineCode ?? "Context unavailable"}
-          </p>
-          <p className="mt-1 text-xs font-semibold uppercase text-jade-steel">
-            {[session.groupCode, session.orderCode ?? session.contextId]
-              .filter(Boolean)
-              .join(" / ")}
-          </p>
-        </div>
-        <StatusChip status={session.status} />
-      </div>
-      <dl className="mt-4 grid gap-2 text-sm text-jade-steel sm:grid-cols-2">
-        <Detail label="Customer" value={session.customerName ?? "Context unavailable"} />
-        <Detail label="Style" value={session.styleCode ?? "Context unavailable"} />
-        <Detail label="Color" value={session.colorName ?? "Context unavailable"} />
-        <Detail label="Started" value={formatDate(session.startedAt) ?? "Waiting"} />
-        <Detail label="Started by" value={session.startedByName ?? session.startedBy ?? "Unknown"} />
-        <Detail label="Reason" value={session.startReason ?? "No reason stored"} />
-        <Detail label="Ended" value={formatDate(session.endedAt) ?? "Active or not ended"} />
-        <Detail label="End reason" value={session.endReason ?? "None"} />
-      </dl>
-    </article>
-  );
-}
-
-function EventReviewCard({ event }: { event: ProductionExecutionEventReview }) {
-  return (
-    <article className="rounded-md border border-slate-200 bg-slate-50 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-black text-jade-ink">
-            {event.lineCode ?? "Context unavailable"}
-          </p>
-          <p className="mt-1 text-xs font-semibold uppercase text-jade-steel">
-            {formatDate(event.eventAt) ?? "No event time"}
-          </p>
-        </div>
-        <StatusChip status={event.eventType} />
-      </div>
-      <dl className="mt-4 grid gap-2 text-sm text-jade-steel sm:grid-cols-2">
-        <Detail
-          label="Transition"
-          value={`${event.fromStatus ?? "None"} -> ${event.toStatus}`}
-        />
-        <Detail label="User" value={event.eventByName ?? event.eventBy ?? "Unknown"} />
-        <Detail label="Reason" value={event.reason ?? "No reason stored"} />
-        <Detail label="Session" value={event.sessionId ?? "No session"} />
-      </dl>
-    </article>
   );
 }
 
@@ -384,21 +260,4 @@ function Detail({ label, value }: { label: string; value: string }) {
       <dd className="text-right font-bold text-jade-ink">{value}</dd>
     </div>
   );
-}
-
-function formatDate(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
 }

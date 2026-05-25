@@ -146,12 +146,12 @@ The Production Execution page now reads from `public.production_execution_readin
 
 Prompt 5F adds a read-only production session review and execution history section to the Production Execution page.
 
-The UI reads:
+The first 5F implementation read:
 
 - `public.production_execution_sessions`
 - `public.production_execution_events`
 
-It shows summary counts, stored sessions, and event timeline rows when real execution history exists. It does not start, stop, close, edit, insert, update, or delete production execution rows.
+The Vercel build hardening patch keeps the page read-only and safely degrades this area to a placeholder backed by the already-working readiness/schema counts. It shows summary counts and empty-state guidance, but does not render full stored session/event cards yet. It does not start, stop, close, edit, insert, update, or delete production execution rows.
 
 Because Prompt 5E-6 used strict cleanup rollback after the backend-only T20 RPC technical test, empty history is currently expected:
 
