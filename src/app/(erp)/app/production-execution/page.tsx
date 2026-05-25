@@ -5,25 +5,10 @@ import { AuthenticatedDataGate } from "@/components/layout/AuthenticatedDataGate
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { getLineCards } from "@/lib/data/factory";
-import type { LineCard } from "@/types/factory";
-
-type ExecutionReadinessStatus =
-  | "NOT_STARTED"
-  | "WAITING_FOR_EXECUTION_DATA"
-  | "READY_TO_START"
-  | "RUNNING"
-  | "PAUSED_STOPPED"
-  | "QUALITY_HOLD"
-  | "NO_FEEDING";
-
-type AssignmentStatus = "AVAILABLE" | "ASSIGNED" | "NOT_ASSIGNABLE";
-
-type ExecutionLine = LineCard & {
-  assignmentStatus: AssignmentStatus;
-  executionReadinessStatus: ExecutionReadinessStatus;
-  executionReadinessBlockers: string[];
-};
+import {
+  getProductionExecutionReadinessData,
+  type ProductionExecutionReadinessLine,
+} from "@/lib/data/production-execution-readiness";
 
 export default function ProductionExecutionPage() {
   return (
@@ -33,140 +18,116 @@ export default function ProductionExecutionPage() {
         title="Execution readiness center"
         description="Read-only production execution foundation. Start, downtime, quality, and feed workflows are prepared for review but remain disabled."
       />
+      <AuthenticatedDataGate
+        queryName="production execution readiness"
+        load={getProductionExecutionReadinessData}
+      >
+        {(data) => (
+          <div className="space-y-6">
+            <section className="rounded-lg border border-orange-100 bg-orange-50 p-5 text-sm font-semibold leading-6 text-orange-950">
+              Production start is disabled in this phase. No line can be marked
+              RUNNING from this screen yet, and no feed percent, feed cover days,
+              actuals, targets, downtime, or production entries are created.
+            </section>
 
-      <AuthenticatedDataGate queryName="production execution readiness" load={getLineCards}>
-        {(lines) => {
-          const executionLines = lines.map(toExecutionLine);
-          const readyLines = executionLines.filter(
-            (line) => line.executionReadinessStatus === "READY_TO_START",
-          );
-          const blockedLines = executionLines.filter(
-            (line) => line.executionReadinessBlockers.length > 0,
-          );
-
-          return (
-            <div className="space-y-6">
-              <section className="rounded-lg border border-orange-100 bg-orange-50 p-5 text-sm font-semibold leading-6 text-orange-950">
-                Production start is disabled in this phase. No line can be marked RUNNING from this screen yet,
-                and no feed percent, feed cover days, actuals, targets, downtime, or production entries are created.
-              </section>
-
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <KpiCard label="Total lines" value={executionLines.length} helper="Real production lines" />
-                <KpiCard
-                  label="Assigned lines"
-                  value={executionLines.filter((line) => line.assignmentStatus === "ASSIGNED").length}
-                  helper="Active line-order contexts"
-                />
-                <KpiCard label="Ready to start" value={readyLines.length} helper="Derived readiness only" />
-                <KpiCard label="Running sessions" value={0} helper="Future table not applied" />
-                <KpiCard label="Blocked lines" value={blockedLines.length} helper="Lines with readiness blockers" />
-              </div>
-
-              <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <PlayCircle className="mt-1 h-5 w-5 text-jade-blue" aria-hidden="true" />
-                  <div>
-                    <h2 className="text-lg font-black text-jade-ink">Assigned lines ready for execution</h2>
-                    <p className="mt-1 text-sm leading-6 text-jade-steel">
-                      These lines have a real active context and are still waiting for execution data.
-                      The button is intentionally disabled until migration and RPC approval.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  {readyLines.map((line) => (
-                    <ExecutionLineCard key={line.id} line={line} mode="ready" />
-                  ))}
-                  {readyLines.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm font-semibold text-jade-steel">
-                      No assigned line is currently ready to start.
-                    </p>
-                  ) : null}
-                </div>
-              </section>
-
-              <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-1 h-5 w-5 text-jade-orange" aria-hidden="true" />
-                  <div>
-                    <h2 className="text-lg font-black text-jade-ink">Lines not ready</h2>
-                    <p className="mt-1 text-sm leading-6 text-jade-steel">
-                      Blockers are derived from real line status, assignment context, and protected groups.
-                      Future execution sessions are not applied yet.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                  {blockedLines.slice(0, 24).map((line) => (
-                    <ExecutionLineCard key={line.id} line={line} mode="blocked" />
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-lg border border-blue-100 bg-blue-50 p-5 text-sm font-semibold leading-6 text-blue-950">
-                <p>Production execution session tables are not applied yet; running sessions are shown as 0.</p>
-                <p>Production start is disabled in this phase.</p>
-                <p>No line can be marked RUNNING from this screen yet.</p>
-              </section>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+              <KpiCard label="Total lines" value={data.summary.totalLines} helper="Real production lines" />
+              <KpiCard label="Assigned lines" value={data.summary.assignedLines} helper="Active line-order contexts" />
+              <KpiCard label="Ready to start" value={data.summary.readyToStartLines} helper="Derived readiness only" />
+              <KpiCard label="Running sessions" value={data.summary.runningSessions} helper="From execution schema" />
+              <KpiCard label="Blocked lines" value={data.summary.blockedLines} helper="Lines with readiness blockers" />
             </div>
-          );
-        }}
+
+            <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <LockKeyhole className="mt-1 h-5 w-5 text-jade-blue" aria-hidden="true" />
+                <div>
+                  <h2 className="text-lg font-black text-jade-ink">Execution schema status</h2>
+                  <p className="mt-1 text-sm leading-6 text-jade-steel">
+                    Readiness comes from the real Supabase view. The RPC exists in the database, but this page remains read-only and does not call it.
+                  </p>
+                </div>
+              </div>
+              <dl className="mt-5 grid gap-3 text-sm text-jade-steel md:grid-cols-3 xl:grid-cols-5">
+                <SchemaDetail
+                  label="Readiness view"
+                  value={data.schemaStatus.readinessViewAvailable ? "Available" : "Not readable"}
+                />
+                <SchemaDetail
+                  label="Sessions table"
+                  value={data.schemaStatus.sessionsTableAvailable ? "Available" : "Not readable"}
+                />
+                <SchemaDetail
+                  label="Events table"
+                  value={data.schemaStatus.eventsTableAvailable ? "Available" : "Not readable"}
+                />
+                <SchemaDetail
+                  label="Sessions count"
+                  value={String(data.schemaStatus.sessionsCount)}
+                />
+                <SchemaDetail
+                  label="Events count"
+                  value={String(data.schemaStatus.eventsCount)}
+                />
+              </dl>
+            </section>
+
+            <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <PlayCircle className="mt-1 h-5 w-5 text-jade-blue" aria-hidden="true" />
+                <div>
+                  <h2 className="text-lg font-black text-jade-ink">Assigned lines ready for execution</h2>
+                  <p className="mt-1 text-sm leading-6 text-jade-steel">
+                    These lines have a real active context and the readiness view says they can be prepared for a future start test. READY_TO_START is not RUNNING.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                {data.readyLines.map((line) => (
+                  <ExecutionLineCard key={line.id} line={line} mode="ready" />
+                ))}
+                {data.readyLines.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm font-semibold text-jade-steel">
+                    No assigned line is currently ready to start.
+                  </p>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-jade-line bg-white p-5 shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-1 h-5 w-5 text-jade-orange" aria-hidden="true" />
+                <div>
+                  <h2 className="text-lg font-black text-jade-ink">Lines not ready</h2>
+                  <p className="mt-1 text-sm leading-6 text-jade-steel">
+                    Blockers come from the real readiness view: assignment context, operational state, group eligibility, and active execution sessions.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                {data.blockedLines.slice(0, 24).map((line) => (
+                  <ExecutionLineCard key={line.id} line={line} mode="blocked" />
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-blue-100 bg-blue-50 p-5 text-sm font-semibold leading-6 text-blue-950">
+              {data.warnings.map((warning) => (
+                <p key={warning}>{warning}</p>
+              ))}
+            </section>
+          </div>
+        )}
       </AuthenticatedDataGate>
     </>
   );
-}
-
-function toExecutionLine(line: LineCard): ExecutionLine {
-  const isNotAssignable = !line.isActive || line.isSpecial || line.groupCode === "G-11";
-  const blockers: string[] = [];
-
-  if (!line.activeContext) blockers.push("No active context");
-  if (!line.isActive) blockers.push("Inactive line");
-  if (line.isSpecial) blockers.push("Special line");
-  if (line.groupCode === "G-11") blockers.push("Ghost or inactive line group");
-
-  if (line.activeContext && line.status !== "WAITING_FOR_DATA") {
-    blockers.push(`Operational status is ${line.status.replaceAll("_", " ")}`);
-  }
-
-  const canStart =
-    Boolean(line.activeContext) &&
-    line.status === "WAITING_FOR_DATA" &&
-    !isNotAssignable;
-
-  return {
-    ...line,
-    assignmentStatus: line.activeContext
-      ? "ASSIGNED"
-      : isNotAssignable
-        ? "NOT_ASSIGNABLE"
-        : "AVAILABLE",
-    executionReadinessStatus: getExecutionReadinessStatus(line, canStart),
-    executionReadinessBlockers: blockers,
-  };
-}
-
-function getExecutionReadinessStatus(
-  line: LineCard,
-  canStart: boolean,
-): ExecutionReadinessStatus {
-  if (line.status === "RUNNING") return "RUNNING";
-  if (line.status === "STOPPED") return "PAUSED_STOPPED";
-  if (line.status === "QUALITY_HOLD") return "QUALITY_HOLD";
-  if (line.status === "NO_FEEDING") return "NO_FEEDING";
-  if (!line.activeContext) return "NOT_STARTED";
-  if (canStart) return "READY_TO_START";
-  return "WAITING_FOR_EXECUTION_DATA";
 }
 
 function ExecutionLineCard({
   line,
   mode,
 }: {
-  line: ExecutionLine;
+  line: ProductionExecutionReadinessLine;
   mode: "ready" | "blocked";
 }) {
   const context = line.activeContext;
@@ -180,7 +141,6 @@ function ExecutionLineCard({
             {[line.groupCode, line.garmentType].filter(Boolean).join(" / ")}
           </p>
         </div>
-
         <div className="flex flex-col items-end gap-2">
           <StatusChip status={line.status} />
           <StatusChip status={line.executionReadinessStatus} />
@@ -193,19 +153,13 @@ function ExecutionLineCard({
         <Detail label="Style" value={context?.styleCode ?? "Waiting"} />
         <Detail label="Color" value={context?.colorName ?? "Waiting"} />
         <Detail label="Shipment" value={context?.shipmentDate ?? "Waiting"} />
-        <Detail
-          label="Feed percent"
-          value={line.feedPercent === null ? "No execution feed" : `${line.feedPercent}%`}
-        />
+        <Detail label="Feed percent" value={line.feedPercent === null ? "No execution feed" : `${line.feedPercent}%`} />
       </dl>
 
       {mode === "blocked" ? (
         <div className="mt-4 space-y-2">
           {line.executionReadinessBlockers.map((blocker) => (
-            <p
-              key={blocker}
-              className="rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-jade-steel"
-            >
+            <p key={blocker} className="rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-jade-steel">
               {blocker}
             </p>
           ))}
@@ -221,11 +175,19 @@ function ExecutionLineCard({
         <LockKeyhole className="h-4 w-4" aria-hidden="true" />
         Start production - prepared, not enabled
       </button>
-
       <p className="mt-2 text-xs font-semibold leading-5 text-jade-steel">
         Requires approved production execution RPC. This screen does not start production.
       </p>
     </article>
+  );
+}
+
+function SchemaDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-slate-100 bg-slate-50 px-4 py-3">
+      <dt className="text-xs font-bold uppercase text-jade-steel">{label}</dt>
+      <dd className="mt-1 text-base font-black text-jade-ink">{value}</dd>
+    </div>
   );
 }
 
