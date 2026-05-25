@@ -26,12 +26,15 @@ Current status:
 - Prompt 5E-3 applied migration 012 safely and verified the readiness view.
 - Prompt 5E-4 connects the Production Execution UI to `production_execution_readiness_view`.
 - Start Production remains disabled and the frontend still does not call `start_production_execution`.
+- Prompt 5E-5 prepares the backend-only RPC test plan and rollback SQL for `start_production_execution`.
 
 Recommended next build sequence:
 
-1. Prompt 5E-5: Controlled backend-only RPC test plan and rollback plan
+1. Prompt 5E-6: Choose test line and run backend-only RPC test manually with rollback prepared
    - Do not enable frontend Start Production yet.
+   - Do not run the RPC until the selected test line is approved.
    - First RPC test should be backend-only/manual with rollback prepared.
+   - Prefer a non-critical test line if H8 should not be touched.
    - Use H8 only if management approves turning it `RUNNING` temporarily.
    - Otherwise create a new controlled test assignment on another safe line before RPC testing.
 
