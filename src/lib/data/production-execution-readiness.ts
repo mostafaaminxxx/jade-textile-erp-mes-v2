@@ -195,6 +195,7 @@ export async function getProductionExecutionReadinessData(): Promise<
       "Production start is disabled in this phase.",
       "No line can be marked RUNNING from this screen yet.",
       "Start Production remains disabled until the controlled RPC test phase.",
+      "Backend-only RPC test plan is prepared; frontend Start Production remains disabled.",
     ],
   });
 }
