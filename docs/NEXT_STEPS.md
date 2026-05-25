@@ -23,16 +23,17 @@ Current status:
 - Migration 012 must not be applied until manual review is complete.
 - Prompt 5E-1 hardens migration 012 with a direct `line_current_state` lock before start-production validation.
 - Prompt 5E-2 adds final pre-apply hardening, optional audit compatibility checks, rollback comments, and post-apply verification comments.
+- Prompt 5E-3 applied migration 012 safely and verified the readiness view.
+- Prompt 5E-4 connects the Production Execution UI to `production_execution_readiness_view`.
+- Start Production remains disabled and the frontend still does not call `start_production_execution`.
 
 Recommended next build sequence:
 
-1. Prompt 5E-3: Controlled manual apply of migration 012 and readiness-view verification
-   - Manually review `supabase/migrations/012_production_execution_state_machine_foundation.sql`.
-   - Apply only after 5E-2 passes.
-   - Verify `production_execution_readiness_view` first.
-   - Confirm H8 appears as `READY_TO_START`.
-   - Confirm no production execution sessions/events were created by applying the migration.
+1. Prompt 5E-5: Controlled backend-only RPC test plan and rollback plan
    - Do not enable frontend Start Production yet.
+   - First RPC test should be backend-only/manual with rollback prepared.
+   - Use H8 only if management approves turning it `RUNNING` temporarily.
+   - Otherwise create a new controlled test assignment on another safe line before RPC testing.
 
 2. Prompt 5E option B: Assignment close/change workflow design
    - Prepare a controlled close/change assignment design.
