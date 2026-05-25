@@ -148,3 +148,16 @@ Final state:
 - H8 remains `WAITING_FOR_DATA` and `READY_TO_START`
 - T20 remains `WAITING_FOR_DATA` and `READY_TO_START`
 - frontend Start Production remains disabled
+
+## Prompt 5F History UI Expectation
+
+Prompt 5F adds a read-only Production Session Review and Execution History UI.
+
+Because Prompt 5E-6 used Option A strict cleanup rollback, the history UI should show:
+
+- `production_execution_sessions = 0`
+- `production_execution_events = 0`
+- no stored session cards
+- no stored event timeline rows
+
+That is correct and not a failure. The T20 technical test evidence is preserved in this document and in `docs/NEXT_STEPS.md`; the database execution history was intentionally cleaned for the test-only rollback.

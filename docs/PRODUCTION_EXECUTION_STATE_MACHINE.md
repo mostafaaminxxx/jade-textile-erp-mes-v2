@@ -1,8 +1,8 @@
 # Production Execution State Machine
 
-This document defines the production execution foundation for Jade Textile ERP/MES V2.
+This document defines the review-only production execution foundation for Jade Textile ERP/MES V2.
 
-Production execution is still controlled. The database foundation exists, but no frontend screen may start production, mark a line running, create downtime, create production entries, or invent feed values until the backend-only RPC test phase is approved.
+Production execution is not enabled yet. No screen may start production, mark a line running, create downtime, create production entries, or invent feed values until the migration/RPC is reviewed, applied, and tested.
 
 ## State Definitions
 
@@ -21,8 +21,8 @@ Assignment status:
 
 | Status | Meaning |
 | --- | --- |
-| `AVAILABLE` | Active standard line has no active context and can be assigned by planning. |
-| `ASSIGNED` | Active `line_order_contexts` row is linked to the line. |
+| `AVAILABLE` | Real active line has no active context and can be assigned by planning. |
+| `ASSIGNED` | Real active `line_order_contexts` row is linked to the line. |
 | `NOT_ASSIGNABLE` | Line is inactive, ghost, special, or otherwise protected. |
 
 Execution readiness/status:
@@ -31,7 +31,7 @@ Execution readiness/status:
 | --- | --- |
 | `NOT_STARTED` | No active line-order context. |
 | `WAITING_FOR_EXECUTION_DATA` | Assigned but blocked or not ready. |
-| `READY_TO_START` | View-derived readiness only; Start Production remains disabled. |
+| `READY_TO_START` | Derived readiness only; start button remains disabled. |
 | `RUNNING` | Future active execution session. |
 | `PAUSED_STOPPED` | Future downtime stop. |
 | `QUALITY_HOLD` | Future quality hold. |
@@ -42,8 +42,8 @@ Execution readiness/status:
 
 | From | To | Future action | Requirements |
 | --- | --- | --- | --- |
-| `ASSIGNED` + `WAITING_FOR_DATA` | `READY_TO_START` | Derived readiness | Active context exists and line is eligible. |
-| `READY_TO_START` | `RUNNING` | Start production | ADMIN, MANAGER, PRODUCTION, or SUPERVISOR; active context; active non-special line; no active session. |
+| `ASSIGNED` + `WAITING_FOR_DATA` | `READY_TO_START` | Derived UI state | Active context exists and line is eligible. |
+| `READY_TO_START` | `RUNNING` | Start production | ADMIN, MANAGER, PRODUCTION, or SUPERVISOR; active context; active non-special line; no active downtime/session. |
 | `RUNNING` | `STOPPED` | Register downtime | Real downtime event required. |
 | `STOPPED` | `RUNNING` | Resolve downtime | Real downtime resolution required. |
 | `RUNNING` | `QUALITY_HOLD` | Quality hold | Real quality hold event required. |
@@ -68,20 +68,48 @@ Execution readiness/status:
 
 ## Tables
 
-Migration 012 created:
+Review-only migration:
+
+`supabase/migrations/012_production_execution_state_machine_foundation.sql`
+
+Tables proposed:
 
 - `production_execution_sessions`: one active production execution session per line/context after production is started.
-- `production_execution_events`: mandatory append-only state transition log.
+- `production_execution_events`: append-only state transition log.
 
-`production_execution_sessions` includes line/context/order references, start/end timestamps, profile references, reasons, constrained statuses, unique active session per line, unique active session per context, and indexes.
+`production_execution_sessions` includes:
 
-`production_execution_events` includes session/line/context references, event type, from/to status, event user, reason, metadata, and indexes.
+- line/context/order references
+- start/end timestamps and users
+- start/end reasons
+- constrained status values: `RUNNING`, `PAUSED_STOPPED`, `QUALITY_HOLD`, `NO_FEEDING`, `CLOSED`
+- unique active session per line
+- unique active session per context
+- indexes on line, context, order, and start time
+
+`production_execution_events` includes:
+
+- session/line/context references
+- event type
+- from/to status
+- event user and reason
+- metadata JSON
+- indexes on line/event time, context/event time, and session
 
 ## Readiness View
 
-`public.production_execution_readiness_view` is read-only and uses `security_invoker = true`.
+The proposed `production_execution_readiness_view` is read-only and uses `security_invoker = true`.
 
-It returns line, group, context, order, customer, style, color, shipment, current operational line status, assignment status, execution readiness status, blockers, feed fields, actual/target today, and last refreshed timestamp.
+It returns:
+
+- line, group, context, order, customer, style, color, and shipment fields
+- current operational line status
+- assignment status
+- execution readiness status
+- readiness blockers
+- feed percent and feed cover days
+- actual/target today
+- last refreshed timestamp
 
 Readiness logic:
 
@@ -93,17 +121,44 @@ Readiness logic:
 - `NOT_STARTED` applies when no active context exists.
 - `WAITING_FOR_EXECUTION_DATA` covers assigned but blocked lines.
 
-Downtime blockers are intentionally TODO until a real downtime workflow/table exists.
+Readiness blockers include:
+
+- No active context
+- Inactive line
+- Special line
+- Ghost or inactive line group
+- Operational status is X
+- Already running
+
+Downtime blockers are intentionally left as a TODO until a real downtime workflow/table exists.
 
 ## Production Execution UI Source
 
-The Production Execution page now reads from `public.production_execution_readiness_view` as the primary source of truth.
+The Production Execution page now reads from `public.production_execution_readiness_view` as the primary source of truth for execution readiness.
 
 - `READY_TO_START` is view-derived readiness only. It does not mean the line is `RUNNING`.
 - Frontend Start Production remains disabled.
 - The `start_production_execution` RPC exists in the database but is not called by the frontend yet.
-- The page displays readiness view, sessions table, and events table availability, plus current sessions/events counts.
+- The page displays schema availability for the readiness view, sessions table, and events table, plus current sessions/events counts.
 - Applying migration 012 and reading the view does not create sessions, events, feed values, actuals, targets, downtime, or production entries.
+
+## Production Session Review UI
+
+Prompt 5F adds a read-only production session review and execution history section to the Production Execution page.
+
+The UI reads:
+
+- `public.production_execution_sessions`
+- `public.production_execution_events`
+
+It shows summary counts, stored sessions, and event timeline rows when real execution history exists. It does not start, stop, close, edit, insert, update, or delete production execution rows.
+
+Because Prompt 5E-6 used strict cleanup rollback after the backend-only T20 RPC technical test, empty history is currently expected:
+
+- `production_execution_sessions = 0`
+- `production_execution_events = 0`
+
+This is not a failure. Future real production starts will create session and event history once frontend writes are explicitly approved.
 
 ## RPC Design
 
@@ -117,14 +172,36 @@ public.start_production_execution(
 )
 ```
 
-The RPC requires authenticated user, active profile, role in `ADMIN`, `MANAGER`, `PRODUCTION`, or `SUPERVISOR`, active non-special line, active non-ghost group not `G-11`, matching active context, no active session for line/context, and current `line_status = WAITING_FOR_DATA`.
+The RPC requires:
+
+- authenticated user
+- active profile
+- role in `ADMIN`, `MANAGER`, `PRODUCTION`, `SUPERVISOR`
+- line exists and is active
+- line is not special
+- group is active and not ghost
+- group code is not `G-11`
+- current line context matches `p_context_id`
+- active context belongs to line
+- no active production execution session exists for the line
+- no active production execution session exists for the context
+- current `line_status = WAITING_FOR_DATA`
 
 Concurrency safety:
 
-- the RPC locks `line_current_state` for the selected line before validating `current_context_id` and `line_status`
+- the RPC must lock `line_current_state` for the selected line before validating `current_context_id` and `line_status`
 - this prevents two users from starting the same line at the same time
 
-The RPC inserts `production_execution_sessions`, inserts `production_execution_events`, updates `line_current_state.line_status` to `RUNNING`, optionally writes compatible `audit_logs`, and leaves `feed_percent`, `feed_cover_days`, `actual_today`, and `target_today` untouched.
+The RPC is designed to:
+
+- insert `production_execution_sessions`
+- insert `production_execution_events`
+- update `line_current_state.line_status` to `RUNNING`
+- write `audit_logs` if the table exists
+- leave `feed_percent` unchanged
+- leave `feed_cover_days` unchanged
+- leave `actual_today` unchanged
+- leave `target_today` unchanged unless future planning logic provides a real target
 
 The frontend does not call this RPC yet.
 
@@ -138,7 +215,33 @@ Prompt 5E-5 prepares a manual backend-only test plan for `public.start_productio
 
 Do not run the RPC until the selected line is approved and rollback SQL is prepared. Prefer a non-critical test line if H8 should not be touched.
 
+## Final Pre-Apply Hardening
+
+- `start_production_execution` locks the selected `line_current_state` row before validating `current_context_id` and `line_status`.
+- `audit_logs` is treated as an optional compatibility audit only.
+- The RPC checks that `audit_logs` exists and has the expected columns before inserting audit data.
+- If `audit_logs` is missing, its schema has drifted, or the optional audit insert fails, the RPC raises a notice and continues because `production_execution_events` is the mandatory execution event log.
+- The RPC still does not write fake feed, actual, or target values.
+- `feed_percent`, `feed_cover_days`, `actual_today`, and `target_today` remain untouched by start production.
+
+## Apply Safety
+
+Applying migration 012 creates schema only.
+
+It does not:
+
+- start production
+- mark H8 or any line `RUNNING`
+- insert production execution sessions or events
+- update `line_current_state` rows
+- update `feed_percent`
+- update `feed_cover_days`
+- update `actual_today`
+- update `target_today`
+
 ## RLS Design
+
+Review-only RLS plan:
 
 - authenticated users can `SELECT` production execution sessions/events
 - authenticated users can `SELECT` the readiness view
@@ -146,10 +249,47 @@ Do not run the RPC until the selected line is approved and rollback SQL is prepa
 - future writes should use controlled RPC functions
 - existing `line_order_contexts` and `line_current_state` policies are not weakened
 
-## Apply Safety
+## Manual Review Checklist
 
-Applying migration 012 created schema only. It did not start production, mark H8 or any line `RUNNING`, insert sessions/events, update `line_current_state`, or update feed/actual/target fields.
+Before applying migration 012:
 
-## Next Safety Step
+- Confirm `profiles.id` references Supabase auth users.
+- Confirm `profiles.role` values include `ADMIN`, `MANAGER`, `PRODUCTION`, and `SUPERVISOR`.
+- Confirm `line_current_state` has `last_event_at`, `last_refreshed_at`, and `updated_at`.
+- Confirm `audit_logs` has `table_name`, `record_id`, `action`, `old_data`, `new_data`, `changed_by`, `changed_at`, and `reason`.
+- Review `security definer` function placement and fixed `search_path`.
+- Confirm no direct write policies are created for the new tables.
+- Apply first in a non-production or manually controlled review window if available.
+- After apply, run a read-only query against `production_execution_readiness_view`.
+- Confirm H8 appears as `READY_TO_START`.
+- Confirm no rows exist in `production_execution_sessions` or `production_execution_events`.
+- Do not enable frontend start buttons until the readiness view is verified.
 
-Prompt 5E-6 should choose a test line and run the backend-only RPC test manually with rollback prepared. Do not enable frontend Start Production yet.
+## Rollback Plan
+
+If migration 012 is applied and must be rolled back before any production execution data exists:
+
+```sql
+drop function if exists public.start_production_execution(uuid, uuid, text);
+drop view if exists public.production_execution_readiness_view;
+drop table if exists public.production_execution_events;
+drop table if exists public.production_execution_sessions;
+```
+
+If any production execution data exists, do not drop tables blindly. Export/review the rows first and decide whether to close sessions, preserve audit history, or create a corrective migration.
+
+Rollback is safe only before production sessions/events exist. After real production starts, do not drop execution tables without export, review, and explicit approval.
+
+## Safety Rules
+
+Starting production is separate from feed and hourly production entry.
+
+Production start means the line begins an execution session. It does not prove output quantity, feed coverage, operator count, downtime, or hourly target. Those values must come from later real workflows:
+
+- hourly production entries
+- material/feed readiness signals
+- downtime events
+- quality holds/releases
+- real planning targets
+
+This separation prevents the UI from creating fake operational confidence.

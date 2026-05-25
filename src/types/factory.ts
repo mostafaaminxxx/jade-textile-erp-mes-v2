@@ -44,11 +44,20 @@ export interface ActiveLineContext {
   styleCode: string | null;
   colorName: string | null;
   shipmentDate: string | null;
+  orderQuantity: number | null;
   smv: number | null;
   plannedOperators: number | null;
   plannedTargetPerDay: number | null;
   contextStartAt: string | null;
+  changeReason: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
   isActive: boolean | null;
+  materialReadinessStatus: string | null;
+  fabricStatus: string | null;
+  accessoryStatus: string | null;
+  wipReadinessStatus: string | null;
+  wipReadinessHint: string | null;
 }
 
 export interface LineCard {
@@ -63,6 +72,8 @@ export interface LineCard {
   stopReason: string | null;
   feedPercent: number | null;
   feedCoverDays: number | null;
+  actualToday: number | null;
+  targetToday: number | null;
   qualityHold: boolean;
   shipmentRisk: string | null;
   lastRefreshedAt: string | null;
@@ -158,6 +169,8 @@ export interface LineDetailData {
     stop_reason: string | null;
     feed_percent: number | null;
     feed_cover_days: number | null;
+    actual_today: number | null;
+    target_today: number | null;
     quality_hold: boolean;
     shipment_risk: string | null;
     last_refreshed_at: string | null;
@@ -220,6 +233,136 @@ export interface LineAssignmentCenterData {
     message: string;
   };
   profileReadiness: AuthProfileReadinessData;
+}
+
+export type AssignmentStatusCode = "AVAILABLE" | "ASSIGNED" | "NOT_ASSIGNABLE";
+
+export type ExecutionReadinessStatus =
+  | "NOT_STARTED"
+  | "WAITING_FOR_EXECUTION_DATA"
+  | "READY_TO_START"
+  | "RUNNING"
+  | "PAUSED_STOPPED"
+  | "QUALITY_HOLD"
+  | "NO_FEEDING"
+  | "COMPLETED_OR_CLOSED";
+
+export interface ProductionExecutionLine extends LineCard {
+  assignmentStatus: AssignmentStatusCode;
+  executionReadinessStatus: ExecutionReadinessStatus;
+  executionReadinessBlockers: string[];
+  hasActiveExecutionSession: boolean;
+  canStartProductionDerived: boolean;
+}
+
+export interface ProductionExecutionReadinessRow {
+  lineId: string;
+  lineCode: string;
+  groupId: string | null;
+  groupCode: string | null;
+  groupName: string | null;
+  currentContextId: string | null;
+  contextId: string | null;
+  orderId: string | null;
+  orderCode: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  styleCode: string | null;
+  colorName: string | null;
+  shipmentDate: string | null;
+  lineStatus: LineStatus;
+  assignmentStatus: AssignmentStatusCode;
+  executionReadinessStatus: ExecutionReadinessStatus;
+  readinessBlockers: string[];
+  feedPercent: number | null;
+  feedCoverDays: number | null;
+  actualToday: number | null;
+  targetToday: number | null;
+  lastRefreshedAt: string | null;
+}
+
+export interface ProductionExecutionSchemaStatus {
+  readinessViewAvailable: boolean;
+  sessionsTableAvailable: boolean;
+  eventsTableAvailable: boolean;
+  sessionsCount: number;
+  eventsCount: number;
+}
+
+export interface ProductionExecutionData {
+  summary: {
+    totalLines: number;
+    assignedLines: number;
+    readyToStartLines: number;
+    runningSessions: number;
+    blockedLines: number;
+  };
+  schemaStatus: ProductionExecutionSchemaStatus;
+  executionTables: {
+    sessionsTableAvailable: boolean;
+    eventsTableAvailable: boolean;
+  };
+  allLines: ProductionExecutionLine[];
+  lines: ProductionExecutionLine[];
+  readyLines: ProductionExecutionLine[];
+  blockedLines: ProductionExecutionLine[];
+  warnings: string[];
+}
+
+export type ProductionExecutionReadinessData = ProductionExecutionData;
+
+export interface ProductionExecutionSessionReview {
+  id: string;
+  lineId: string | null;
+  lineCode: string | null;
+  groupCode: string | null;
+  contextId: string | null;
+  orderId: string | null;
+  orderCode: string | null;
+  customerName: string | null;
+  styleCode: string | null;
+  colorName: string | null;
+  status: string;
+  startedAt: string | null;
+  startedBy: string | null;
+  startedByName: string | null;
+  startReason: string | null;
+  endedAt: string | null;
+  endedBy: string | null;
+  endedByName: string | null;
+  endReason: string | null;
+}
+
+export interface ProductionExecutionEventReview {
+  id: string;
+  sessionId: string | null;
+  lineId: string | null;
+  lineCode: string | null;
+  contextId: string | null;
+  eventType: string;
+  fromStatus: string | null;
+  toStatus: string;
+  eventAt: string | null;
+  eventBy: string | null;
+  eventByName: string | null;
+  reason: string | null;
+  metadata: unknown;
+}
+
+export interface ProductionExecutionHistoryData {
+  summary: {
+    totalSessions: number;
+    activeSessions: number;
+    closedSessions: number;
+    totalEvents: number;
+    startEvents: number;
+    latestEventAt: string | null;
+    sessionsTableAvailable: boolean;
+    eventsTableAvailable: boolean;
+  };
+  sessions: ProductionExecutionSessionReview[];
+  events: ProductionExecutionEventReview[];
+  warnings: string[];
 }
 
 export interface ReadinessSummary {
