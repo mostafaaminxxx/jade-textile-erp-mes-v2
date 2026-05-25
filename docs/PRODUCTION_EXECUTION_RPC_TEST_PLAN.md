@@ -100,3 +100,51 @@ Use H8 only if approved:
 - feed cover days: `null`
 
 The frontend remains disconnected from `start_production_execution`.
+
+## Prompt 5E-6 Test Result
+
+Controlled backend-only RPC technical test was completed on T20, not H8.
+
+Selected line:
+
+- line code: `T20`
+- group: `G-1`
+- line id: `fe5e280a-e52d-4928-8662-50f5621d216b`
+
+Selected order/context:
+
+- order id: `d210f483-ed3f-46b4-a531-44c26fa8ee67`
+- order code: `YSEXH2785-FW26 P05-XH2785-FW26-UCI NOIR/URBAIN-BLANC==YESIM`
+- customer: `LACOSTE`
+- style: `XH2785`
+- color: `UCI NOIR/URBAIN-BLANC`
+- shipment date: `2026-04-12`
+- T20 context id: `2bba0ea0-91cc-4d45-a304-a9f9747febab`
+
+RPC result:
+
+- RPC called once on T20 only.
+- session id: `07c7d04c-7a73-4158-8d63-a09bbdc04fdb`
+- event id: `29a98c2e-3821-4f29-b5d0-89907038679f`
+- T20 changed from `WAITING_FOR_DATA` to `RUNNING`.
+- One `START_PRODUCTION` event was created with `from_status = WAITING_FOR_DATA` and `to_status = RUNNING`.
+- `feed_percent`, `feed_cover_days`, `actual_today`, and `target_today` remained unchanged.
+
+Rollback:
+
+- Option A strict cleanup rollback was executed immediately.
+- Test event row was deleted.
+- Test session row was deleted.
+- T20 `line_status` was restored to `WAITING_FOR_DATA`.
+- T20 `current_context_id` was kept as `2bba0ea0-91cc-4d45-a304-a9f9747febab`.
+- T20 remains assigned and `READY_TO_START` for future controlled tests.
+
+Final state:
+
+- `production_execution_sessions` count: `0`
+- `production_execution_events` count: `0`
+- active line contexts: `2`
+- feed rows: `0`
+- H8 remains `WAITING_FOR_DATA` and `READY_TO_START`
+- T20 remains `WAITING_FOR_DATA` and `READY_TO_START`
+- frontend Start Production remains disabled
