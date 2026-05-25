@@ -72,8 +72,8 @@ export interface LineCard {
   stopReason: string | null;
   feedPercent: number | null;
   feedCoverDays: number | null;
-  actualToday: number | null;
-  targetToday: number | null;
+  actualToday?: number | null;
+  targetToday?: number | null;
   qualityHold: boolean;
   shipmentRisk: string | null;
   lastRefreshedAt: string | null;
@@ -169,8 +169,8 @@ export interface LineDetailData {
     stop_reason: string | null;
     feed_percent: number | null;
     feed_cover_days: number | null;
-    actual_today: number | null;
-    target_today: number | null;
+    actual_today?: number | null;
+    target_today?: number | null;
     quality_hold: boolean;
     shipment_risk: string | null;
     last_refreshed_at: string | null;
