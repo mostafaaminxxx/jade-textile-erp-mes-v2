@@ -27,29 +27,36 @@ Current status:
 - Prompt 5E-4 connects the Production Execution UI to `production_execution_readiness_view`.
 - Start Production remains disabled and the frontend still does not call `start_production_execution`.
 - Prompt 5E-5 prepares the backend-only RPC test plan and rollback SQL for `start_production_execution`.
+- Prompt 5E-6 completed a backend-only RPC technical test on T20.
+- The RPC passed: one session/event was created, T20 changed to `RUNNING`, feed/actual/target fields stayed unchanged, and strict cleanup rollback restored sessions/events to zero.
+- H8 was not touched and remains protected.
+- T20 remains assigned and `READY_TO_START` for future controlled testing.
 
 Recommended next build sequence:
 
-1. Prompt 5E-6: Choose test line and run backend-only RPC test manually with rollback prepared
-   - Do not enable frontend Start Production yet.
-   - Do not run the RPC until the selected test line is approved.
-   - First RPC test should be backend-only/manual with rollback prepared.
-   - Prefer a non-critical test line if H8 should not be touched.
-   - Use H8 only if management approves turning it `RUNNING` temporarily.
-   - Otherwise create a new controlled test assignment on another safe line before RPC testing.
+1. Prompt 5E-7: Prepare frontend gated Start Production button
+   - Keep it behind explicit confirmation and role gate.
+   - Keep it disabled by default until final approval.
+   - Use T20 as the controlled test line if a frontend test is approved.
+   - Do not touch H8.
 
-2. Prompt 5E option B: Assignment close/change workflow design
+2. Prompt 5F: Build production session review/history UI before enabling frontend writes
+   - Show sessions/events history.
+   - Show audit evidence for backend RPC test.
+   - Keep operational writes disabled until review passes.
+
+3. Prompt 5E option B: Assignment close/change workflow design
    - Prepare a controlled close/change assignment design.
    - Keep direct overwrite blocked.
    - Require explicit user-selected context changes and audit logging.
 
-3. Downtime workflow
+4. Downtime workflow
    - Add downtime schema/workflow only after roles and line contexts are active.
    - Keep all stopped/hold states tied to real records.
 
-4. Production execution workflow
+5. Production execution workflow
    - Add production entry after authentication, role assignment, and approval boundaries are defined.
    - Feed line cards from real production and WIP signals only.
 
-5. Broader auth and roles
+6. Broader auth and roles
    - Extend supervisor, production, quality, warehouse, maintenance, manager, and admin gates before enabling more writes.
