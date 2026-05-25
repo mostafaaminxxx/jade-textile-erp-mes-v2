@@ -87,7 +87,8 @@ export function LineDetailDrawer({
               <ActiveContextDetails context={line.activeContext} />
             ) : (
               <p className="text-sm font-semibold leading-6 text-jade-steel">
-                No active order context. This line is available for planning assignment.
+                No active order context. This line is available for planning
+                assignment.
               </p>
             )}
           </Section>
@@ -108,6 +109,10 @@ export function LineDetailDrawer({
                   label="Shipment date"
                   value={line.activeContext.shipmentDate ?? "Waiting for planning values"}
                 />
+                <DetailRow
+                  label="Order quantity"
+                  value={formatNumber(line.activeContext.orderQuantity)}
+                />
               </>
             ) : (
               <p className="text-sm font-semibold leading-6 text-jade-steel">
@@ -117,16 +122,42 @@ export function LineDetailDrawer({
           </Section>
 
           <Section title="Material / WIP Readiness Snapshot">
-            <p className="text-sm font-semibold leading-6 text-jade-steel">
-              {line.activeContext
-                ? "Readiness is available at order/customer/style level. It is not pushed to line execution yet."
-                : "Readiness is available at order/customer/style level, not pushed to line execution yet."}
-            </p>
+            {line.activeContext ? (
+              <>
+                <DetailRow
+                  label="Material status"
+                  value={line.activeContext.materialReadinessStatus ?? "Waiting"}
+                />
+                <DetailRow
+                  label="Fabric status"
+                  value={line.activeContext.fabricStatus ?? "Waiting"}
+                />
+                <DetailRow
+                  label="Accessory status"
+                  value={line.activeContext.accessoryStatus ?? "Waiting"}
+                />
+                <DetailRow
+                  label="WIP status"
+                  value={line.activeContext.wipReadinessStatus ?? "Waiting"}
+                />
+                <p className="rounded-md border border-orange-100 bg-orange-50 px-3 py-2 text-sm font-semibold leading-6 text-orange-900">
+                  {line.activeContext.wipReadinessHint ??
+                    "Readiness is available at order/customer/style level, not pushed to line execution yet."}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm font-semibold leading-6 text-jade-steel">
+                Readiness is available at order/customer/style level, not pushed
+                to line execution yet.
+              </p>
+            )}
           </Section>
 
           <Section title="Execution Safety">
             <DetailRow label="Feed percent" value={formatExecutionValue(line.feedPercent, "%")} />
             <DetailRow label="Feed cover days" value={formatExecutionValue(line.feedCoverDays)} />
+            <DetailRow label="Actual today" value={formatExecutionValue(line.actualToday)} />
+            <DetailRow label="Target today" value={formatExecutionValue(line.targetToday)} />
             <DetailRow label="Stop reason" value={line.stopReason ?? "None reported"} />
             <DetailRow
               label="Quality hold"
@@ -142,33 +173,58 @@ export function LineDetailDrawer({
           </Section>
 
           <section className="rounded-lg border border-orange-100 bg-orange-50 p-4 text-sm font-semibold leading-6 text-orange-900">
-            Assignment does not start production, does not change feed %, and does not mark the line running.
+            Assignment does not start production, does not change feed %, and
+            does not mark the line running.
           </section>
 
           <Section title="Read-Only Future Actions">
             <div className="grid gap-3 sm:grid-cols-2">
-              {["Start production", "Close / change assignment", "Register downtime", "Add production entry"].map(
-                (label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    disabled
-                    title="Coming in a controlled workflow phase."
-                    className="min-h-11 rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-black text-slate-500"
-                  >
-                    {label}
-                    <span className="mt-1 block text-xs font-semibold">
-                      Coming in a controlled workflow phase.
-                    </span>
-                  </button>
-                ),
-              )}
+              {getFutureActions(line).map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  disabled
+                  title={action.helper}
+                  className="min-h-11 rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-black text-slate-500"
+                >
+                  {action.label}
+                  <span className="mt-1 block text-xs font-semibold">
+                    {action.helper}
+                  </span>
+                </button>
+              ))}
             </div>
           </Section>
         </div>
       </aside>
     </div>
   );
+}
+
+function getFutureActions(line: LineCard) {
+  const startLabel =
+    line.activeContext && line.status === "WAITING_FOR_DATA"
+      ? "Start production - prepared, not enabled"
+      : "Start production";
+
+  return [
+    {
+      label: startLabel,
+      helper: "Requires approved production execution RPC.",
+    },
+    {
+      label: "Close / change assignment",
+      helper: "Coming in a controlled workflow phase.",
+    },
+    {
+      label: "Register downtime",
+      helper: "Coming in a controlled workflow phase.",
+    },
+    {
+      label: "Add production entry",
+      helper: "Coming in a controlled workflow phase.",
+    },
+  ];
 }
 
 function StatusExplanation({
@@ -212,6 +268,9 @@ function ActiveContextDetails({ context }: { context: ActiveLineContext }) {
       <DetailRow label="Color" value={context.colorName ?? "Waiting"} />
       <DetailRow label="Shipment date" value={context.shipmentDate ?? "Waiting"} />
       <DetailRow label="Context start" value={context.contextStartAt ?? "Waiting"} />
+      <DetailRow label="Change reason" value={context.changeReason ?? "Waiting"} />
+      <DetailRow label="Approved by" value={context.approvedBy ?? "Waiting"} />
+      <DetailRow label="Approved at" value={context.approvedAt ?? "Waiting"} />
     </>
   );
 }
@@ -268,7 +327,11 @@ function DetailRow({
 }
 
 type AssignmentStatus = "Assigned" | "Available" | "Not assignable";
-type ExecutionStatus = "Not started" | "Waiting for execution data" | "Running" | "Stopped";
+type ExecutionStatus =
+  | "Not started"
+  | "Waiting for execution data"
+  | "Running"
+  | "Stopped";
 
 function getAssignmentStatus(line: LineCard): AssignmentStatus {
   if (line.activeContext) {
@@ -333,10 +396,10 @@ function Badge({ className, children }: { className: string; children: ReactNode
   );
 }
 
-function formatNumber(value: number | null) {
-  return value === null ? "Waiting for planning values" : String(value);
+function formatNumber(value: number | null | undefined) {
+  return value == null ? "Waiting for planning values" : String(value);
 }
 
-function formatExecutionValue(value: number | null, suffix = "") {
-  return value === null ? "Not started / no execution feed yet" : `${value}${suffix}`;
+function formatExecutionValue(value: number | null | undefined, suffix = "") {
+  return value == null ? "Not started / no execution feed yet" : `${value}${suffix}`;
 }

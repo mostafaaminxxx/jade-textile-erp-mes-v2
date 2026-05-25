@@ -44,20 +44,20 @@ export interface ActiveLineContext {
   styleCode: string | null;
   colorName: string | null;
   shipmentDate: string | null;
-  orderQuantity: number | null;
+  orderQuantity?: number | null;
   smv: number | null;
   plannedOperators: number | null;
   plannedTargetPerDay: number | null;
   contextStartAt: string | null;
-  changeReason: string | null;
-  approvedBy: string | null;
-  approvedAt: string | null;
+  changeReason?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
   isActive: boolean | null;
-  materialReadinessStatus: string | null;
-  fabricStatus: string | null;
-  accessoryStatus: string | null;
-  wipReadinessStatus: string | null;
-  wipReadinessHint: string | null;
+  materialReadinessStatus?: string | null;
+  fabricStatus?: string | null;
+  accessoryStatus?: string | null;
+  wipReadinessStatus?: string | null;
+  wipReadinessHint?: string | null;
 }
 
 export interface LineCard {
