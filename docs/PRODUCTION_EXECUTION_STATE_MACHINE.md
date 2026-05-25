@@ -128,6 +128,16 @@ The RPC inserts `production_execution_sessions`, inserts `production_execution_e
 
 The frontend does not call this RPC yet.
 
+## Backend-Only RPC Test Plan
+
+Prompt 5E-5 prepares a manual backend-only test plan for `public.start_production_execution`.
+
+- Test plan: `docs/PRODUCTION_EXECUTION_RPC_TEST_PLAN.md`
+- Manual SQL test script: `supabase/manual/003_backend_only_start_production_rpc_test.sql`
+- Manual rollback script: `supabase/manual/004_backend_only_start_production_rpc_test_rollback.sql`
+
+Do not run the RPC until the selected line is approved and rollback SQL is prepared. Prefer a non-critical test line if H8 should not be touched.
+
 ## RLS Design
 
 - authenticated users can `SELECT` production execution sessions/events
@@ -142,4 +152,4 @@ Applying migration 012 created schema only. It did not start production, mark H8
 
 ## Next Safety Step
 
-Prompt 5E-5 should produce a backend-only RPC test plan and rollback plan. Do not enable frontend Start Production yet.
+Prompt 5E-6 should choose a test line and run the backend-only RPC test manually with rollback prepared. Do not enable frontend Start Production yet.
